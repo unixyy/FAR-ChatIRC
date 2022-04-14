@@ -7,10 +7,8 @@
 
 void * Receive(int* dS) {
   int taille2;
-  int stop = 0;
-  char haveToStop[] = "fin";
 
-  while (!stop) {
+  while (1) {
 
     int tailleRCV = recv(*dS, &taille2, sizeof(int), 0);
     if (tailleRCV == -1) {
@@ -34,11 +32,6 @@ void * Receive(int* dS) {
       break;
     }
     printf("Message reçu : %s\n", msg) ;
-
-    strtok(msg,"\n");
-      if (strcmp(msg, haveToStop) == 0) {
-        stop=1;
-      } 
 
     free(msg);
 
@@ -79,7 +72,7 @@ int main(int argc, char *argv[]) {
 
     char *m = (char *)malloc(sizeof(char)*30);
     
-    printf("message : ");
+    //printf("message : ");
     fgets(m, sizeof(char)*30, stdin);
 
     int taille = strlen(m);
@@ -104,6 +97,5 @@ int main(int argc, char *argv[]) {
     } 
   free(m);
   }
-    shutdown(dS,2) ;  
     // printf("Fin du programme");
 }

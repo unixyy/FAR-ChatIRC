@@ -13,14 +13,15 @@ struct data {
     int arrayCli[20];
     int indexCli;
   }datas;
-int stop = 0;
+
 
 typedef struct data data;
 
 void * receiveSend(data* datas){
     char haveToStop[] = "fin";
     int index = (*datas).indexCli-1;
-  while(1){
+    int stop = 0;
+  while(!stop){
       int taille;
       int tailleRCV = recv((*datas).arrayCli[index], &taille, sizeof(int), 0);
       if (tailleRCV == -1) {
@@ -50,17 +51,17 @@ void * receiveSend(data* datas){
       strtok(msg,"\n");
       strtok(haveToStop,"\0");
       if (strcmp(msg, haveToStop) == 0) {
-        int tmp = stop;
-        tmp = 1;
-        stop = tmp;
+        stop = 1;
       }
 
       for (int i=0;i<(*datas).indexCli;i++) {
+        if ((*datas).arrayCli[index] != datas->arrayCli[i]) {
         if (send(datas->arrayCli[i], &taille, sizeof(int), 0) == -1) {
         perror("Erreur send");
         shutdown((*datas).arrayCli[index], 2) ; 
         shutdown((*datas).dS,2) ;  
         exit(0);
+      }
       }
       // printf("Taille Envoyé \n");
 
@@ -68,6 +69,7 @@ void * receiveSend(data* datas){
 
       
     for (int i=0;i<(*datas).indexCli;i++) {
+      if ((*datas).arrayCli[index] != datas->arrayCli[i]) {
       if (send(datas->arrayCli[i], msg, taille*sizeof(char), 0) == -1) {
         perror("Erreur send");
           shutdown((*datas).arrayCli[index], 2) ; 
@@ -75,9 +77,16 @@ void * receiveSend(data* datas){
         exit(0);
       }
       printf("Message Envoyé\n");
-      
+      }
   }
   free(msg);
+  }
+  shutdown((*datas).arrayCli[datas->indexCli],2);
+  if (index != 0) {
+    for (int i=index;i<(datas->indexCli)-1;i++) {
+    (*datas).arrayCli[i] = (*datas).arrayCli[i+1];
+  }
+  (*datas).arrayCli[index]--;
   }
   pthread_exit(0);
 }
