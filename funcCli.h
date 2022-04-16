@@ -1,0 +1,2 @@
+
+void * Receive(int* dS);
