@@ -26,23 +26,26 @@ int main(int argc, char *argv[]) {
   if (bind(dS, (struct sockaddr*)&ad, sizeof(ad)) == -1){ perror("Error bind"); exit(0); } // Name the socket
   printf("Socket named\n");
 
+  data datas;
+
+
   listen(dS, 7); // Setup the socket in listening mode
   printf("Listening mode\n");
-  printf("c'est chelou");
+  printf("c'est chelou\n");
   datas.dS = dS;
-  printf("test2");
+  printf("test2\n");
   datas.indexCli = 0;
-  printf("test1");
+  printf("test1\n");
   datas.id = 0;
-  printf("test");
-  for (int l = 0; l < 20; l++)
-  {
+  printf("test\n");
+  for (int l = 0; l < 20; l++) {
     for (int c = 0;c<2;c++) {
-      printf("%d",l);
-      strcpy(datas.arrayCli[l][c],"");
+      datas.arrayCli[l][c] = calloc(40,sizeof(char));
+      strcpy(datas.arrayCli[l][c],"nonEmpty");
+      printf("%s\n",datas.arrayCli[l][c]);
     }
   }
-  printf("passed remplissage");
+  printf("passed remplissage\n");
 
   socklen_t lg = sizeof(struct sockaddr_in);
 
@@ -50,19 +53,24 @@ int main(int argc, char *argv[]) {
 
     if (datas.indexCli < 19) { // If there is too many clients
 
-      datas.arrayCli[nextEmpty(&datas)][0] = (char *) accept(dS, (struct sockaddr*) &aC,&lg) ; // Accept a client
+      printf("ok\n");
+      int next = nextEmpty(&datas);
+      printf("%d\n",next);
+
+      datas.arrayCli[next][0] = (char *) accept(dS, (struct sockaddr*) &aC,&lg) ; // Accept a client
       if (datas.arrayCli[datas.indexCli] == -1) { perror("Error accept"); shutdown(dS, 2); exit(0);
       }
-      datas.id = datas.arrayCli[nextEmpty(&datas)][0];
+      datas.id = datas.arrayCli[next][0];
       datas.indexCli++;
       printf("Connected client\n");
-      printf(nextEmpty(&datas));
 
       pthread_t thread[NB_THREADS];
       pthread_create(&thread[datas.indexCli], NULL, receiveSend, &datas); // Creates a thread that manages the relaying of messages
 
-    }
-
+     }
+      /*char *buf;
+      fgets(buf, sizeof(buf), stdin); // Message to send
+      */
   }
 
   shutdown(datas.dS, 2); // Close the socket

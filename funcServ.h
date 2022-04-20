@@ -6,7 +6,7 @@ struct data {
     char* arrayCli[20][2];
     int indexCli;
     int id;
-} datas;
+};
 typedef struct data data;
 
 int actualIndex(data* data);

@@ -11,8 +11,9 @@
 #define haveToStop "end"
 
 void * receiveSend(data* datas) {
+    printf("ok\n");
     int index = actualIndex(&datas);
-    printf("l'index est %d",index);
+    printf("l'index est %d\n",index);
     //printf(datas->arrayCli[index][0]);
     int stop = 0;
     int firstmsg = 1;
@@ -20,10 +21,12 @@ void * receiveSend(data* datas) {
     while (!stop) {
 
         int taille;
-               printf("%d\n",(int)datas->arrayCli[index][0]);
-        int tailleRCV = recv((int)datas->arrayCli[index][0], &taille, sizeof(int), 0); // Receives the size of the message that will follow
-        if (tailleRCV == -1) { perror("Error recv 1 "); shutdown((int)datas->arrayCli[index][0], 2); shutdown((*datas).dS, 2); exit(0); }
+        //printf("%d\n",(int)datas->arrayCli[index][0]);
+        int tailleRCV = recv(4, &taille, sizeof(int), 0); // Receives the size of the message that will follow
+        if (tailleRCV == -1) { perror("Error recv 1 "); exit(0); }
         else if (tailleRCV == 0) { break; }
+
+        printf("taille received\n");
 
         char *msg = (char *)malloc(sizeof(char)*taille);
         int msgRCV = recv((int)datas->arrayCli[index][0], msg, taille*sizeof(char), 0); // Receives a message from a client
@@ -69,7 +72,7 @@ int actualIndex(data* data) {
     int cpt = 0;
     int stop = 0;
     while (!stop) { 
-        if (data->arrayCli[cpt][0] == data->id) {
+        if ((int)data->arrayCli[cpt][0] == data->id) {
             stop = 1;
         }
         cpt++;
@@ -79,7 +82,8 @@ int actualIndex(data* data) {
 
 int nextEmpty(data* data) {
     for (int i=0;i<20;i++) {
-        if (strcmp(data->arrayCli[i][0],"")) {
+        if (strcmp(data->arrayCli[i][0],"nonEmpty") == 0) {
+            printf("%d\n", i);
             return i;
         }
     }
@@ -89,8 +93,8 @@ int nextEmpty(data* data) {
 void deleteUser(data* data, char* id) {
     for (int i=0;i<20;i++) {
         if (data->arrayCli[i][0] == id) {
-            data->arrayCli[i][0] = "";
-            data->arrayCli[i][1] = "";
+            data->arrayCli[i][0] = "nonEmpty";
+            data->arrayCli[i][1] = "nonEmpty";
             data->indexCli--;
             return;
         }
