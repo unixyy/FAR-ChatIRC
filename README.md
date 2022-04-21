@@ -13,4 +13,4 @@ Start a client :
 - Compilation : gcc -o client client.c funcCli.c
 - Execution : ./client IPSERVER NUMPORT
 
-Created by Jason, Richard et Thomas.
+Created by Jason, Richard and Thomas.
