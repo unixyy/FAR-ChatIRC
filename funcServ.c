@@ -93,3 +93,83 @@ void deleteUser(data* data, int id) {
         }
     }
 }
+
+int isCommand(char* msg) {
+    if (msg[0] == '/') {
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
+char** getCommand(char* msg) {
+    char* command = (char*)malloc(sizeof(char)*strlen(msg));
+    strcpy(command,msg);
+    char **datas = (char *)malloc(sizeof(char) * strlen(msg));
+    int i = 0;
+    while(i<2) {
+        strtok(command," ");
+        strcpy(datas[i],command);
+        i++;
+    }
+    strcpy(datas[i],command);
+    return datas;
+}
+
+void executeCommand(char* content, data* data, int id) {
+    char ** command = getCommand(content);
+    if (strcmp(command[0],"/help") == 0) {
+        helpMessage(id);
+    }
+    else if (strcmp(command[0],"/msg") == 0) {
+        privateMessage(command[2],command[1],data);
+    }
+    else {
+        printf("Command not found\n");
+        helpMessage(id);
+    }
+}
+
+int nameToId(char* username, data* data) {
+    for (int i=0;i<20;i++) {
+        if (data->arrayName[i] == username) {
+            return data->arrayId[i];
+        }
+    }
+    return -1;
+}
+
+void privateMessage(char* msg, char* username, data* data) {
+    int id = nameToId(username, data);
+    if (id != -1) {
+        int index = actualIndex(data);
+        if (send(id, strlen(msg), sizeof(int), 0) == -1) { 
+            perror("Error send"); 
+            shutdown(data->arrayId[index], 2); 
+            shutdown((*data).dS,2); 
+            exit(0); 
+        }
+    }
+    else {
+        //user doesn't exist
+    }
+}
+
+void helpMessage(int id) {
+    FILE *f;
+    char c;
+    char *content = calloc(10000,sizeof(char));
+    content = "";
+    f = fopen("listCommand.txt", "rt");
+    if (f == NULL) {
+        printf("Error opening file\n");
+        exit(1);
+    }
+    while((c=fgetc(f))!=EOF){
+        printf("%c",c);
+        strcat(content,c);
+    }
+    fclose(f);
+    return content;
+}

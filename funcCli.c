@@ -20,7 +20,7 @@ void * Receive(int* dS) {
     int msgRCV = recv(*dS, msg, taille2*sizeof(char), 0); // Receives the message that will follow
     if (msgRCV == -1 ) { perror("Error recv"); shutdown(*dS, 2); exit(0); }
     else if (msgRCV == 0) { break; }
-    printf("Message received : %s\n", msg) ;
+    printf("%s\n", msg) ;
 
     free(msg);
 
