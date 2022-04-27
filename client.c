@@ -7,7 +7,7 @@
 #include <pthread.h>
 #include "funcCli.h"
 
-#define haveToStop "end"
+#define haveToStop "@quit"
 
 int main(int argc, char *argv[]) {
 
@@ -26,6 +26,8 @@ int main(int argc, char *argv[]) {
 
   pthread_t my_thread;
   pthread_create(&my_thread, NULL, Receive, &dS); // Creates a thread that manages the reciving of messages
+
+  printf("Bienvenue ! Vous pouvez chatter librement après avoir indiqué votre pseudo (/help en cas de besoin).\n");
 
   while (!stop) {
 

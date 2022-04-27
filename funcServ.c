@@ -8,7 +8,7 @@
 #include <pthread.h>
 #include "funcServ.h"
 
-#define haveToStop "end"
+#define haveToStop "@quit"
 
 void * receiveSend(data* datas) {
 
@@ -32,6 +32,9 @@ void * receiveSend(data* datas) {
         if(firstmsg == 1){
             strcpy(datas->arrayName[index],msg);
             firstmsg=0;
+        }
+        else if (isCommand(msg)) { 
+            executeCommand(msg,datas,index);
         }
         else {
         
@@ -105,71 +108,131 @@ int isCommand(char* msg) {
 
 char** getCommand(char* msg) {
     char* command = (char*)malloc(sizeof(char)*strlen(msg));
+    char * sauv = (char*)malloc(sizeof(char)*strlen(msg));
+    strcpy(sauv,msg);
     strcpy(command,msg);
-    char **datas = (char *)malloc(sizeof(char) * strlen(msg));
-    int i = 0;
-    while(i<2) {
-        strtok(command," ");
-        strcpy(datas[i],command);
+    char *datas[3];
+    for (int i=0;i<3;i++) {
+        datas[i]=(char *)malloc(sizeof(char) * 200);
+    }
+
+    char d[] = " ";
+    char *p = strtok(msg, d);
+    int i=0;
+    while((p != NULL) && (i<2))
+    {
+        strcpy(datas[i],p);
+        p = strtok(NULL, d);
         i++;
     }
-    strcpy(datas[i],command);
+
+    char* chaine = (char*)malloc(sizeof(char)*strlen(msg));
+
+    int iterateur=0;
+    int iterateur2 = 0;
+    int iterateur3 = 0; 
+    while(sauv[iterateur] != '\0') {
+        if (iterateur2 >= 2) {
+            chaine[iterateur3] = sauv[iterateur];
+            iterateur3++;
+        }
+        if ((sauv[iterateur] == ' ') && (iterateur2 <= 1)) {
+            iterateur2++;
+        }
+    iterateur++;
+    }
+
+    strcpy(datas[2],chaine);
+
     return datas;
 }
 
 void executeCommand(char* content, data* data, int id) {
     char ** command = getCommand(content);
-    if (strcmp(command[0],"/help") == 0) {
-        helpMessage(id);
+    char * test2 = command[0];
+    char test[] = "/test";
+    strtok(test,"\0");
+    strtok(test2,"\0");
+    strtok(test2,"\n");
+    if (strcmp(test2,"/help") == 0) { 
+        char content[500] = "";
+        char* test8 = helpMessage(&content);
+        privateMessage(test8, data->arrayName[id], data,id);
     }
-    else if (strcmp(command[0],"/msg") == 0) {
-        privateMessage(command[2],command[1],data);
+    else if (strcmp(test2,"/msg") == 0) {
+        char * test3 = command[1];
+        strtok(test3,"\0");
+        char * test4 = command[2];
+        strtok(test4,"\0");
+        privateMessage(test4, test3, data,id);
+    }
+    else if (strcmp(test2,"/list") == 0) { 
+        char content[500] = "";
+        char* test8 = listClient(&content,data);
+        privateMessage(test8, data->arrayName[id], data,id);
     }
     else {
         printf("Command not found\n");
-        helpMessage(id);
+        privateMessage(helpMessage(&content), data->arrayName[id], data,id);
     }
 }
 
 int nameToId(char* username, data* data) {
     for (int i=0;i<20;i++) {
-        if (data->arrayName[i] == username) {
+        strtok(data->arrayName[i],"\n");
+        strtok(data->arrayName[i],"\0");
+        strtok(username,"\n");
+        strtok(username,"\0");
+        char * test = data->arrayName[i];
+        strtok(test,"\n");
+        strtok(test,"\0");
+        if (strcmp(test,username) == 0) {
             return data->arrayId[i];
         }
     }
     return -1;
 }
 
-void privateMessage(char* msg, char* username, data* data) {
+void privateMessage(char* msg, char* username, data* data, int index) {
+    char* az = (char*)malloc(sizeof(char)*strlen(msg));
+    strcpy(az,msg);
     int id = nameToId(username, data);
     if (id != -1) {
-        int index = actualIndex(data);
-        if (send(id, strlen(msg), sizeof(int), 0) == -1) { 
-            perror("Error send"); 
-            shutdown(data->arrayId[index], 2); 
-            shutdown((*data).dS,2); 
-            exit(0); 
-        }
+        int taille = 200;
+        send(id, &taille, sizeof(int), 0);
+        send(id, msg, taille*sizeof(char),0);
     }
     else {
-        //user doesn't exist
+        printf("error\n");
     }
 }
 
-void helpMessage(int id) {
+char* helpMessage(char* content) {
     FILE *f;
     char c;
-    char *content = calloc(10000,sizeof(char));
-    content = "";
     f = fopen("listCommand.txt", "rt");
-    if (f == NULL) {
-        printf("Error opening file\n");
-        exit(1);
-    }
+    int i = 0;
     while((c=fgetc(f))!=EOF){
-        printf("%c",c);
-        strcat(content,c);
+        content[i] = c;
+        i++;
     }
     fclose(f);
+    return content;
+}
+
+char * listClient(char* content, data* data) { 
+    int iterateur = 0;
+    for (int i=0;i<20;i++) {
+        if (data->arrayId[i] != -1) {
+            int iterateur2 = 0;
+            while((data->arrayName[i])[iterateur2] != '\0') {
+                content[iterateur] = (data->arrayName[i])[iterateur2];
+                iterateur++;
+                iterateur2++;
+            }
+            content[iterateur] = ' ';
+            iterateur++;
+        }
+    }
     return content;
 }

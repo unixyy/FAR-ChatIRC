@@ -1,3 +1,4 @@
 /help -- command to have the list of possible commands
 /msg user content -- command to send a private message to a user
 /list -- show the list of available users
+@quit -- close the session

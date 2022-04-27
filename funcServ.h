@@ -18,9 +18,11 @@ char** getCommand(char* msg);
 
 void executeCommand(char* content, data* data, int id);
 
-void privateMessage(char* msg, char* username, data* data); // TODO
+void privateMessage(char* msg, char* username, data* data, int id);
 
-void helpMessage(int id);
+char * listClient(char* content, data* data);
+
+char* helpMessage(char* content);
 
 int nameToId(char* username, data* data);
 
