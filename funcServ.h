@@ -1,5 +1,7 @@
 
 struct sockaddr_in aC;
+  
+//pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct data {
     int dS;
@@ -30,7 +32,7 @@ int nameToId(char* username, data* data);
 
 char* idToName(int id, data* data);
 
-void * receiveSend(data* datas);
+void * receiveSend(data* datas, pthread_mutex_t* mutex);
 
 int nextEmpty(data* data);
 

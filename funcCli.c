@@ -25,7 +25,5 @@ void * Receive(int* dS) {
     free(msg);
 
   }
-
-  pthread_exit(0);
   
 }

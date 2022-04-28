@@ -40,6 +40,8 @@ int main(int argc, char *argv[]) {
 
   socklen_t lg = sizeof(struct sockaddr_in);
 
+  pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
   while (1) {
 
     if (datas.numberCli < 19) {
@@ -49,6 +51,7 @@ int main(int argc, char *argv[]) {
       int test = accept(dS, (struct sockaddr*) &aC,&lg) ; // Accept a client
       if (test== -1) { perror("Error accept"); shutdown(dS, 2); exit(0);
       }
+      pthread_mutex_lock(&mutex);
       datas.arrayId[next] = test;
       datas.actualId = test;
       datas.numberCli++;
@@ -56,7 +59,7 @@ int main(int argc, char *argv[]) {
       
       pthread_t thread[NB_THREADS];
       pthread_create(&thread[next], NULL, receiveSend, &datas); // Creates a thread that manages the relaying of messages
-
+      pthread_mutex_unlock(&mutex);
      }
 
   }

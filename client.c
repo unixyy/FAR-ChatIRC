@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <signal.h>
 #include "funcCli.h"
 
 #define haveToStop "@quit"
@@ -46,5 +47,7 @@ int main(int argc, char *argv[]) {
     free(m);
 
   }
+
+  pthread_kill(my_thread, SIGTERM);
 
 }

@@ -10,7 +10,7 @@
 
 #define haveToStop "@quit"
 
-void * receiveSend(data* datas) {
+void * receiveSend(data* datas, pthread_mutex_t* mutex) {
 
     int index = actualIndex(datas);
     int stop = 0;
@@ -30,7 +30,9 @@ void * receiveSend(data* datas) {
         printf("Message received : %s\n", msg) ;
 
         if(firstmsg == 1){
+            pthread_mutex_lock(&mutex);
             strcpy(datas->arrayName[index],msg);
+            pthread_mutex_unlock(&mutex);
             firstmsg=0;
         }
         else if (isCommand(msg)) { 
@@ -69,8 +71,11 @@ void * receiveSend(data* datas) {
 
   }
 
+
   shutdown(datas->arrayId[index],2); // Close the client
+  pthread_mutex_lock(&mutex);
   deleteUser(datas,datas->arrayId[index]);
+  pthread_mutex_unlock(&mutex);
   pthread_exit(0);
 
 }
