@@ -23,10 +23,10 @@ Created by Jason, Richard and Thomas.
 TODO :
 - 1: Gestion pseudo déjà existant
 - 2: Ajout d’un sémaphore indiquant le nombre de place restante sur le serveur pour faciliter le remplacement de client et assurer un nombre de client maximum (  Utiliser la bibliothèque sys/sem.h : exemple ici ! )
-Gestion des signaux (Ctrl+C) client et serveur
-Ajout d’une variable partagée pour une fermeture propre des threads lors de la déconnexion des clients et la connexion de nouveau clients
-Synchronisation des threads des clients terminés
-- 3: Nettoyage  et optimisation code (mettre correctement les /n sur l'affichage du client)
+- 3: Gestion des signaux (Ctrl+C) client et serveur
+- 4: Ajout d’une variable partagée pour une fermeture propre des threads lors de la déconnexion des clients et la connexion de nouveau clients
+- 5: Synchronisation des threads des clients terminés
+- 6: Nettoyage et optimisation code (mettre correctement les /n sur l'affichage du client)
 
 ################################################################
 ################################################################
