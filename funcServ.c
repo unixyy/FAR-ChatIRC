@@ -37,10 +37,20 @@ void * receiveSend(data* datas) {
             executeCommand(msg,datas,index);
         }
         else {
-        
-        strtok(msg,"\n");
-        strtok(haveToStop,"\0");
-        if (strcmp(msg, haveToStop) == 0) { stop = 1; } // If the message sent is end
+            char *sender = calloc(30, sizeof(char));
+            strcpy(sender,idToName(datas->arrayId[index], datas));
+            strtok(sender, "\n");
+            taille = taille + 3 + strlen(sender);
+            char* content = (char *)malloc(sizeof(char)*taille);
+            strcpy(content,"");
+            strcat(content, sender);
+            strcat(content, " : ");
+            strcat(content, msg);
+            strtok(msg, "\n");
+            strtok(haveToStop, "\0");
+            if (strcmp(msg, haveToStop) == 0) {
+                stop = 1; 
+            } // If the message sent is end
             for (int i=0;i<20;i++) {
                 if ((datas->arrayId[index] != datas->arrayId[i]) && (datas->arrayId[i] != -1)) { // If the client is different from the one sending
                     if (send(datas->arrayId[i], &taille, sizeof(int), 0) == -1) { perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS,2); exit(0); }
@@ -49,7 +59,7 @@ void * receiveSend(data* datas) {
 
             for (int i=0;i<20;i++) {
                 if ((datas->arrayId[index] != datas->arrayId[i]) && (datas->arrayId[i] != -1)) { // If the client is different from the one sending
-                    if (send(datas->arrayId[i], msg, taille*sizeof(char), 0) == -1) {  perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS, 2); exit(0); }
+                    if (send(datas->arrayId[i], content, taille*sizeof(char), 0) == -1) {  perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS, 2); exit(0); }
                     printf("Message sent\n");
                 }
             }
@@ -157,7 +167,7 @@ void executeCommand(char* content, data* data, int id) {
     if (strcmp(test2,"/help") == 0) { 
         char content[500] = "";
         char* test8 = helpMessage(&content);
-        privateMessage(test8, data->arrayName[id], data,id);
+        privateMessage2(test8, data->arrayName[id], data,id);
     }
     else if (strcmp(test2,"/msg") == 0) {
         char * test3 = command[1];
@@ -169,11 +179,11 @@ void executeCommand(char* content, data* data, int id) {
     else if (strcmp(test2,"/list") == 0) { 
         char content[500] = "";
         char* test8 = listClient(&content,data);
-        privateMessage(test8, data->arrayName[id], data,id);
+        privateMessage2(test8, data->arrayName[id], data,id);
     }
     else {
         printf("Command not found\n");
-        privateMessage(helpMessage(&content), data->arrayName[id], data,id);
+        privateMessage2(helpMessage(&content), data->arrayName[id], data,id);
     }
 }
 
@@ -193,19 +203,54 @@ int nameToId(char* username, data* data) {
     return -1;
 }
 
+char* idToName(int id, data* data) {
+    for (int i=0;i<20;i++) {
+        int test = data->arrayId[i];
+        if (test == id) {
+            return data->arrayName[i];
+        }
+    }
+    return -1;
+}
+
 void privateMessage(char* msg, char* username, data* data, int index) {
-    char* az = (char*)malloc(sizeof(char)*strlen(msg));
-    strcpy(az,msg);
+
+    char *sender = calloc(30, sizeof(char));
+    strcpy(sender,idToName(data->arrayId[index], data));
+    strtok(sender, "\n");
+    int taille = strlen(msg) + 16 + strlen(sender);
+    char* content = (char *)malloc(sizeof(char)*taille);
+    strcpy(content,"Whisper from ");
+    strcat(content, sender);
+    strcat(content, " : ");
+    strcat(content, msg);
     int id = nameToId(username, data);
     if (id != -1) {
         int taille = 200;
         send(id, &taille, sizeof(int), 0);
-        send(id, msg, taille*sizeof(char),0);
+        send(id, content, taille*sizeof(char),0);
     }
     else {
         printf("error\n");
     }
 }
+
+void privateMessage2(char* msg, char* username, data* data, int index) {
+
+    int taille = strlen(msg);
+    char* content = (char *)malloc(sizeof(char)*taille);
+    strcat(content, msg);
+    int id = nameToId(username, data);
+    if (id != -1) {
+        int taille = 200;
+        send(id, &taille, sizeof(int), 0);
+        send(id, content, taille*sizeof(char),0);
+    }
+    else {
+        printf("error\n");
+    }
+}
+
 
 char* helpMessage(char* content) {
     FILE *f;

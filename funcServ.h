@@ -20,11 +20,15 @@ void executeCommand(char* content, data* data, int id);
 
 void privateMessage(char* msg, char* username, data* data, int id);
 
+void privateMessage2(char* msg, char* username, data* data, int index);
+
 char * listClient(char* content, data* data);
 
 char* helpMessage(char* content);
 
 int nameToId(char* username, data* data);
+
+char* idToName(int id, data* data);
 
 void * receiveSend(data* datas);
 

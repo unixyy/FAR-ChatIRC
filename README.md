@@ -31,7 +31,6 @@ Ajout d’une variable partagée pour une fermeture propre des threads lors de l
 Synchronisation des threads des clients terminés
 Attention : La bibliothèque de sémaphore n’est pas la même sous MacOs, rappel la cible de l’application est un système Linux, pour corriger lien
 - 3: Nettoyage  et optimisation code
-Amélioration mise en page client (pseudo de celui qui envoie et si privé ou pas...)
 
 ################################################################
 ################################################################
