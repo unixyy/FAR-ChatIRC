@@ -37,3 +37,5 @@ void * receiveSend(data* datas, pthread_mutex_t* mutex);
 int nextEmpty(data* data);
 
 void deleteUser(data* data, int id);
+
+int checkPseudo(data* data, char* pseudo);

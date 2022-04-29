@@ -30,10 +30,17 @@ void * receiveSend(data* datas, pthread_mutex_t* mutex) {
         printf("Message received : %s\n", msg) ;
 
         if(firstmsg == 1){
-            pthread_mutex_lock(&mutex);
-            strcpy(datas->arrayName[index],msg);
-            pthread_mutex_unlock(&mutex);
-            firstmsg=0;
+            if (checkPseudo(datas,msg) == 1) {
+                int taille2 = 46;
+                send(datas->arrayId[index], &taille2, sizeof(int), 0);
+                send(datas->arrayId[index], "Pseudo deja pris, veuillez en choisir un autre", taille2*sizeof(char), 0);
+            }
+            else {
+                pthread_mutex_lock(&mutex);
+                strcpy(datas->arrayName[index],msg);
+                pthread_mutex_unlock(&mutex);
+                firstmsg=0;
+            }
         }
         else if (isCommand(msg)) { 
             executeCommand(msg,datas,index);
@@ -285,4 +292,13 @@ char * listClient(char* content, data* data) {
         }
     }
     return content;
+}
+
+int checkPseudo(data* data, char* pseudo) {
+    for (int i=0;i<20;i++) {
+        if (strcmp(data->arrayName[i],pseudo) == 0) {
+            return 1;
+        }
+    }
+    return 0;
 }
