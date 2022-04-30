@@ -16,6 +16,12 @@ void * receiveSend(data* datas, pthread_mutex_t* mutex) {
     int stop = 0;
     int firstmsg = 1;
 
+/*
+    int taille3 = 104;
+    send(datas->arrayId[index], &taille3, sizeof(int), 0);
+    send(datas->arrayId[index], "Bienvenue ! Vous pouvez chatter librement après avoir indiqué votre pseudo (/help en cas de besoin).", taille3*sizeof(char), 0);
+    printf("Message sent\n");*/
+
     while (!stop) {
 
         int taille;
@@ -82,7 +88,26 @@ void * receiveSend(data* datas, pthread_mutex_t* mutex) {
   shutdown(datas->arrayId[index],2); // Close the client
   pthread_mutex_lock(&mutex);
   deleteUser(datas,datas->arrayId[index]);
+  datas->threadToClose[index] = pthread_self();
+  rk_sema_post(datas->s1);
   pthread_mutex_unlock(&mutex);
+  rk_sema_post(datas->s);
+  pthread_exit(0);
+
+}
+
+void * closeThread(data* datas) {
+
+    while(1) { 
+        rk_sema_wait(datas->s1);
+        for (int i=0;i<20;i++) {
+            if (datas->threadToClose[i] != 0) {
+                pthread_kill(datas->threadToClose[i], SIGTERM);
+                datas->threadToClose[i] = 0;
+            }
+        }
+    }
+
   pthread_exit(0);
 
 }
@@ -113,7 +138,6 @@ void deleteUser(data* data, int id) {
         if (data->arrayId[i] == id) {
             data->arrayId[i] = -1;
             strcpy(data->arrayName[i],"empty");
-            data->numberCli--;
             return;
         }
     }
@@ -301,4 +325,42 @@ int checkPseudo(data* data, char* pseudo) {
         }
     }
     return 0;
+}
+
+static inline void
+rk_sema_init(struct rk_sema *s, uint32_t value)
+{
+#ifdef __APPLE__
+    dispatch_semaphore_t *sem = &s->sem;
+
+    *sem = dispatch_semaphore_create(value);
+#else
+    sem_init(&s->sem, 0, value);
+#endif
+}
+
+static inline void
+rk_sema_wait(struct rk_sema *s)
+{
+
+#ifdef __APPLE__
+    dispatch_semaphore_wait(s->sem, DISPATCH_TIME_FOREVER);
+#else
+    int r;
+
+    do {
+            r = sem_wait(&s->sem);
+    } while (r == -1 && errno == EINTR);
+#endif
+}
+
+static inline void
+rk_sema_post(struct rk_sema *s)
+{
+
+#ifdef __APPLE__
+    dispatch_semaphore_signal(s->sem);
+#else
+    sem_post(&s->sem);
+#endif
 }
