@@ -14,16 +14,3 @@ Start a client :
 - Execution : ./client IPSERVER NUMPORT
 
 Created by Jason, Richard and Thomas.
-
-
-
-################################################################
-################################################################
-
-TODO :
-- Gestion des signaux (Ctrl+C) serveur
-- Mettre correctement les /n sur l'affichage du client
-- Amélioration visuel (Envoie bienvenue après acceptation (send dans funcServ) par le serveur et non directement sur le client)
-
-################################################################
-################################################################

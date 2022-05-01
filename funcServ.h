@@ -20,8 +20,8 @@ struct data {
     char* arrayName[20];
     int actualId;
     struct rk_sema* s;
-    struct rk_sema* s1;
     pthread_t* threadToClose[20];
+    int* isClose[20];
 }datas;
 typedef struct data data;
 

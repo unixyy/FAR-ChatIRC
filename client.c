@@ -10,18 +10,30 @@
 
 #define haveToStop "@quit"
 
-int shouldRun = 1;
+  pthread_t my_thread;
 
-void sighandler(int) {
-    shouldRun = 0;
+void  INThandler(int sig)
+{
+     char  c;
+
+     signal(sig, SIG_IGN);
+     printf("\nOUCH, did you hit Ctrl-C?\n"
+            "Do you really want to quit? [y/n] ");
+     c = getchar();
+     if (c == 'y' || c == 'Y') {
+       printf("Déconnexion...\n");
+pthread_kill(my_thread, SIGTERM);
+exit(0);
+     }
+          
+     else
+          signal(SIGINT, INThandler);
+     getchar(); // Get new line character
 }
 
 int main(int argc, char *argv[]) {
 
-  if (signal(SIGINT, &sighandler) == SIG_ERR) {
-        fprintf(stderr, "Could not set signal handler\n");
-        return EXIT_FAILURE;
-  }
+  signal(SIGINT, INThandler);
 
   datas.stop=0;
   datas.dS = socket(PF_INET, SOCK_STREAM, 0); // Create a socket
@@ -37,13 +49,11 @@ int main(int argc, char *argv[]) {
 
   int stop = 0;
 
-  pthread_t my_thread;
   pthread_create(&my_thread, NULL, Receive, &datas); // Creates a thread that manages the reciving of messages
 
   printf("Connexion...\n");
-  printf("Bienvenue ! Vous pouvez chatter librement après avoir indiqué votre pseudo (/help en cas de besoin).\n");
 
-  while (!stop && !datas.stop && shouldRun) {
+  while (!stop && !datas.stop) {
 
     char *m = (char *)malloc(sizeof(char)*30);
     fgets(m, sizeof(char)*30, stdin); // Message to send

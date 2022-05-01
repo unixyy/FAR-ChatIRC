@@ -13,14 +13,13 @@
 void * receiveSend(data* datas, pthread_mutex_t* mutex) {
 
     int index = actualIndex(datas);
+
     int stop = 0;
     int firstmsg = 1;
 
-/*
     int taille3 = 104;
     send(datas->arrayId[index], &taille3, sizeof(int), 0);
     send(datas->arrayId[index], "Bienvenue ! Vous pouvez chatter librement après avoir indiqué votre pseudo (/help en cas de besoin).", taille3*sizeof(char), 0);
-    printf("Message sent\n");*/
 
     while (!stop) {
 
@@ -89,7 +88,7 @@ void * receiveSend(data* datas, pthread_mutex_t* mutex) {
   pthread_mutex_lock(&mutex);
   deleteUser(datas,datas->arrayId[index]);
   datas->threadToClose[index] = pthread_self();
-  rk_sema_post(datas->s1);
+  datas->isClose[index] = 1;
   pthread_mutex_unlock(&mutex);
   rk_sema_post(datas->s);
   pthread_exit(0);
@@ -99,11 +98,11 @@ void * receiveSend(data* datas, pthread_mutex_t* mutex) {
 void * closeThread(data* datas) {
 
     while(1) { 
-        rk_sema_wait(datas->s1);
+
         for (int i=0;i<20;i++) {
-            if (datas->threadToClose[i] != 0) {
+            if (datas->isClose[i] != 0) {
                 pthread_kill(datas->threadToClose[i], SIGTERM);
-                datas->threadToClose[i] = 0;
+                datas->isClose[i] = 0;
             }
         }
     }

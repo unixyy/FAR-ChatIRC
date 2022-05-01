@@ -11,10 +11,28 @@
 
 #define NB_THREADS 21
 
-int shouldRun = 1;
 
-void sighandler(int) {
-    shouldRun = 0;
+  pthread_t thread[NB_THREADS];
+
+void  INThandler(int sig)
+{
+     char  c;
+
+     signal(sig, SIG_IGN);
+     printf("\nOUCH, did you hit Ctrl-C?\n"
+            "Do you really want to quit? [y/n] ");
+     c = getchar();
+     if (c == 'y' || c == 'Y') {
+            shutdown(datas.dS, 2); // Close the socket
+  printf("End of program\n");
+    for (int i=0;i<21;i++) {
+    pthread_kill(thread[i], SIGTERM);
+  }
+  exit(0);
+     }
+     else
+          signal(SIGINT, INThandler);
+     getchar(); // Get new line character
 }
 
 static inline void
@@ -46,6 +64,8 @@ rk_sema_wait(struct rk_sema *s)
 
 int main(int argc, char *argv[]) {
 
+  signal(SIGINT, INThandler);
+
   printf("Start of the server\n");
   
   int dS = socket(PF_INET, SOCK_STREAM, 0); // Create a socket
@@ -64,16 +84,14 @@ int main(int argc, char *argv[]) {
   printf("Listening mode\n");
 
   struct rk_sema s;
-  struct rk_sema s1;
 
   datas.dS = dS;
   datas.actualId = 0;
   datas.s = &s;
-  datas.s1 = &s1;
   for (int i = 0; i < 20; i++) {
       datas.arrayName[i] = calloc(40,sizeof(char));
       datas.arrayId[i] = -1;
-      datas.threadToClose = 0;
+      datas.isClose[i] = 0;
       strcpy(datas.arrayName[i],"empty");
   }
 
@@ -82,15 +100,8 @@ int main(int argc, char *argv[]) {
   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
   rk_sema_init(datas.s, 20);
-  rk_sema_init(datas.s, -1);
 
-
-    if (signal(SIGINT, &sighandler) == SIG_ERR) {
-        fprintf(stderr, "Could not set signal handler\n");
-        return EXIT_FAILURE;
-    }
-
-  while (shouldRun) {
+  while (1) {
 
 
     rk_sema_wait(datas.s);
@@ -105,7 +116,6 @@ int main(int argc, char *argv[]) {
       datas.actualId = test;
       printf("Connected client\n");
       
-      pthread_t thread[NB_THREADS];
       pthread_create(&thread[next], NULL, receiveSend, &datas); // Creates a thread that manages the relaying of messages
       pthread_create(&thread[20], NULL, closeThread, &datas); // Creates a thread that manages the relaying of messages
 
@@ -113,11 +123,7 @@ int main(int argc, char *argv[]) {
 
   }
 
-  shutdown(datas.dS, 2); // Close the socket
-  printf("End of program");
-    for (int i=0;i<21;i++) {
-    pthread_kill(thread[i], SIGTERM);
-  }
+  return 0;
 
 }
 
