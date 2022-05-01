@@ -11,56 +11,9 @@
 
 #define NB_THREADS 21
 
+pthread_t thread[NB_THREADS];
 
-  pthread_t thread[NB_THREADS];
-
-void  INThandler(int sig)
-{
-     char  c;
-
-     signal(sig, SIG_IGN);
-     printf("\nOUCH, did you hit Ctrl-C?\n"
-            "Do you really want to quit? [y/n] ");
-     c = getchar();
-     if (c == 'y' || c == 'Y') {
-            shutdown(datas.dS, 2); // Close the socket
-  printf("End of program\n");
-    for (int i=0;i<21;i++) {
-    pthread_kill(thread[i], SIGTERM);
-  }
-  exit(0);
-     }
-     else
-          signal(SIGINT, INThandler);
-     getchar(); // Get new line character
-}
-
-static inline void
-rk_sema_init(struct rk_sema *s, uint32_t value)
-{
-#ifdef __APPLE__
-    dispatch_semaphore_t *sem = &s->sem;
-
-    *sem = dispatch_semaphore_create(value);
-#else
-    sem_init(&s->sem, 0, value);
-#endif
-}
-
-static inline void
-rk_sema_wait(struct rk_sema *s)
-{
-
-#ifdef __APPLE__
-    dispatch_semaphore_wait(s->sem, DISPATCH_TIME_FOREVER);
-#else
-    int r;
-
-    do {
-            r = sem_wait(&s->sem);
-    } while (r == -1 && errno == EINTR);
-#endif
-}
+void  INThandler(int sig); // To manage control c
 
 int main(int argc, char *argv[]) {
 
@@ -90,7 +43,7 @@ int main(int argc, char *argv[]) {
   datas.s = &s;
   for (int i = 0; i < 20; i++) {
       datas.arrayName[i] = calloc(40,sizeof(char));
-      datas.arrayId[i] = -1;
+      datas.arrayId[i] = (int*)-1;
       datas.isClose[i] = 0;
       strcpy(datas.arrayName[i],"empty");
   }
@@ -103,23 +56,22 @@ int main(int argc, char *argv[]) {
 
   while (1) {
 
-
     rk_sema_wait(datas.s);
 
-      int next = nextEmpty(&datas);
+    int next = nextEmpty(&datas);
       
-      int test = accept(dS, (struct sockaddr*) &aC,&lg) ; // Accept a client
-      if (test== -1) { perror("Error accept"); shutdown(dS, 2); exit(0);
-      }
-      pthread_mutex_lock(&mutex);
-      datas.arrayId[next] = test;
-      datas.actualId = test;
-      printf("Connected client\n");
+    int idClient = accept(dS, (struct sockaddr*) &aC,&lg) ; // Accept a client
+    if (idClient== -1) { perror("Error accept"); shutdown(dS, 2); exit(0);}
       
-      pthread_create(&thread[next], NULL, receiveSend, &datas); // Creates a thread that manages the relaying of messages
-      pthread_create(&thread[20], NULL, closeThread, &datas); // Creates a thread that manages the relaying of messages
+    pthread_mutex_lock(&mutex);
+    datas.arrayId[next] = idClient;
+    datas.actualId = idClient;
+    printf("Connected client\n");
+      
+    pthread_create(&thread[next], NULL, receiveSend, &datas); // Creates a thread that manages the relaying of messages
+    pthread_create(&thread[20], NULL, closeThread, &datas); // Creates a thread that manages the closing of receiveSend threads
 
-      pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&mutex);
 
   }
 
@@ -127,3 +79,16 @@ int main(int argc, char *argv[]) {
 
 }
 
+void  INThandler(int sig) { // To manage control c
+  char  c;
+  signal(sig, SIG_IGN);
+  printf("\nOUCH, did you hit Ctrl-C?\n""Do you really want to quit? [y/n] ");
+  c = getchar();
+  if (c == 'y' || c == 'Y') { 
+    shutdown(datas.dS, 2);
+    printf("End of program\n");
+    for (int i=0;i<21;i++) { pthread_kill(thread[i], SIGTERM);}
+    exit(0);
+  } else { signal(SIGINT, INThandler); }
+  getchar(); // Get new line character
+}

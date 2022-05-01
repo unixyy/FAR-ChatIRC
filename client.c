@@ -10,26 +10,9 @@
 
 #define haveToStop "@quit"
 
-  pthread_t my_thread;
+pthread_t my_thread;
 
-void  INThandler(int sig)
-{
-     char  c;
-
-     signal(sig, SIG_IGN);
-     printf("\nOUCH, did you hit Ctrl-C?\n"
-            "Do you really want to quit? [y/n] ");
-     c = getchar();
-     if (c == 'y' || c == 'Y') {
-       printf("Déconnexion...\n");
-pthread_kill(my_thread, SIGTERM);
-exit(0);
-     }
-          
-     else
-          signal(SIGINT, INThandler);
-     getchar(); // Get new line character
-}
+void  INThandler(int); // To manage control c
 
 int main(int argc, char *argv[]) {
 
@@ -49,9 +32,9 @@ int main(int argc, char *argv[]) {
 
   int stop = 0;
 
-  pthread_create(&my_thread, NULL, Receive, &datas); // Creates a thread that manages the reciving of messages
+  pthread_create(&my_thread, NULL, (void*)Receive, &datas); // Creates a thread that manages the reciving of messages
 
-  printf("Connexion...\n");
+  printf("Connection...\n");
 
   while (!stop && !datas.stop) {
 
@@ -70,7 +53,18 @@ int main(int argc, char *argv[]) {
     free(m);
 
   }
-printf("Déconnexion...\n");
-pthread_kill(my_thread, SIGTERM);
 
+  printf("Disconnection...\n");
+  pthread_kill(my_thread, SIGTERM); // Kill the receive thread
+
+}
+
+void  INThandler(int sig) { // To manage control c
+  char  c;
+  signal(sig, SIG_IGN);
+  printf("\nOUCH, did you hit Ctrl-C?\n""Do you really want to quit? [y/n] ");
+  c = getchar();
+  if (c == 'y' || c == 'Y') { printf("Disconnection...\n"); pthread_kill(my_thread, SIGTERM); exit(0); }    
+  else { signal(SIGINT, INThandler); }
+  getchar(); // Get new line character
 }

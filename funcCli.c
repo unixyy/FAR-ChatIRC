@@ -7,10 +7,8 @@
 #include <pthread.h>
 #include "funcCli.h"
 
-void * Receive(data* datas) {
-
+void * Receive(data* datas) { // Thread for receiving a message
   while (1) {
-
     int taille2;
     int tailleRCV = recv(datas->dS, &taille2, sizeof(int), 0); // Receives the size of the message that will follow
     if (tailleRCV == -1) { perror("Error recv"); shutdown(datas->dS, 2); exit(0);}
@@ -23,9 +21,7 @@ void * Receive(data* datas) {
     printf("%s\n", msg) ;
 
     free(msg);
-
   }
   datas->stop = 1;
   pthread_exit(0);
-  
 }

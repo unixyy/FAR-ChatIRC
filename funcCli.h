@@ -5,4 +5,4 @@ struct data {
 }datas;
 typedef struct data data;
 
-void * Receive(data* datas);
+void * Receive(data* datas); // Thread for receiving a message
