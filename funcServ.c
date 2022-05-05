@@ -6,8 +6,10 @@
 #include <string.h>
 #include <unistd.h> 
 #include <pthread.h>
+#include <dirent.h>
 #include "funcServ.h"
 
+#define SIZE 1024
 #define haveToStop "@quit"
 
 void * receiveSend(data* datas, pthread_mutex_t* mutex) { // Thread for receiving and sending a message
@@ -134,7 +136,7 @@ void deleteUser(data* data, int id) { // Removes a user from the user list
 }
 
 int isCommand(char* msg) { // Determines if the received message contains a command
-    if (msg[0] == '/') {
+    if ((msg[0] == '/') || (msg[0] == '&')) {
         return 1;
     }
     else {
@@ -145,6 +147,7 @@ int isCommand(char* msg) { // Determines if the received message contains a comm
 char** getCommand(char* msg) { // Separates the information in a message
     char * save = (char*)malloc(sizeof(char)*strlen(msg));
     strcpy(save,msg);
+    printf("%s\n",msg);
     char *datas[3];
     for (int i=0;i<3;i++) {
         datas[i]=(char *)malloc(sizeof(char) * 200);
@@ -187,16 +190,25 @@ void executeCommand(char* content, data* data, int id) {
     char * toCompare = command[0];
     strtok(toCompare,"\0");
     strtok(toCompare,"\n");
-    if (strcmp(toCompare,"/help") == 0) { // help command
+    if (strcmp(toCompare,"/help") == 0) { // Help command
         char cont[500] = "";
         personalMessage(helpMessage(&cont), data->arrayName[id], data,id);
     }
-    else if (strcmp(toCompare,"/msg") == 0) { // private message
+    else if (strcmp(toCompare,"&sfile") == 0) { // Files list of the server
+        char cont[500] = "";
+        personalMessage(listFile(&cont), data->arrayName[id], data,id);
+    }
+    else if (strcmp(toCompare,"/msg") == 0) { // Private message
         privateMessage(command[2], command[1], data,id);
     }
-    else if (strcmp(toCompare,"/list") == 0) { // list command
+    else if (strcmp(toCompare,"/list") == 0) { // List command
         char cont[500] = "";
         personalMessage(listClient(&cont,data), data->arrayName[id], data,id);
+    }
+    else if (strcmp(toCompare,"&send") == 0) {
+        char * filename = command[1];
+        pthread_t threadFile;
+        pthread_create(&threadFile, NULL, (void*)file, filename); // Creates a thread that manages the reciving of messages
     }
     else {
         printf("Command not found\n");
@@ -204,6 +216,21 @@ void executeCommand(char* content, data* data, int id) {
         personalMessage(helpMessage(&cont), data->arrayName[id], data,id);
     }
     free(toCompare);
+}
+
+char* listFile(char* content) { // Print files list of the server
+    struct dirent *dir;
+    DIR *d = opendir("./servFile"); 
+    if (d)
+    {
+        while ((dir = readdir(d)) != NULL)
+        {
+            strcat(content,dir->d_name);
+            strcat(content,"\n");
+        }
+        closedir(d);
+    }
+    return content;
 }
 
 int nameToId(char* username, data* data) { // Retrieves the username corresponding to an id
@@ -255,7 +282,7 @@ void personalMessage(char* msg, char* username, data* data, int index) { // Send
     strcat(content, msg);
     int id = nameToId(username, data);
     if (id != -1) {
-        int size = 200;
+        int size = 500;
         if (send(id, &size, sizeof(int), 0) == -1) { perror("Error send"); shutdown(id, 2); shutdown(datas.dS,2); exit(0); }
         if (send(id, content, size*sizeof(char),0) == -1) { perror("Error send"); shutdown(id, 2); shutdown(datas.dS,2); exit(0); }
     }
@@ -303,4 +330,75 @@ int checkPseudo(data* data, char* pseudo) { // See if a username is already in u
         }
     }
     return 0;
+}
+
+void write_file(int sockfd, char* filename){
+  int n;
+  FILE *fp;
+  char buffer[SIZE];
+ char * path = malloc(50*sizeof(char));
+ strcat(path,"./servFile/");
+ strcat(path,filename);
+  fp = fopen(path, "w");
+  while (1) {
+    n = recv(sockfd, buffer, SIZE, 0);
+    if (n <= 0){
+      break;
+      return;
+    }
+	fputs(buffer,fp);
+    fprintf(fp, "%s", buffer);
+    bzero(buffer, SIZE);
+  }
+  	fclose(fp);
+  return;
+}
+ 
+void file(char* filename){
+  char *ip = "127.0.0.1";
+  int port = 3030;
+  int e;
+  char * name = malloc(sizeof(char)*50);
+
+  strcpy(name,filename);
+ 
+  int sockfd, new_sock;
+  struct sockaddr_in server_addr, new_addr;
+  socklen_t addr_size;
+  char buffer[SIZE];
+ 
+  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if(sockfd < 0) {
+    perror("[-]Error in socket");
+    exit(1);
+  }
+  printf("[+]Server socket created successfully.\n");
+ 
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_port = port;
+  server_addr.sin_addr.s_addr = inet_addr(ip);
+ 
+  e = bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
+  if(e < 0) {
+    perror("[-]Error in bind");
+    exit(1);
+  }
+  printf("[+]Binding successfull.\n");
+ 
+  if(listen(sockfd, 10) == 0){
+ printf("[+]Listening....\n");
+ }else{
+ perror("[-]Error in listening");
+    exit(1);
+ }
+
+ strtok(name,"\n");
+ 
+  addr_size = sizeof(new_addr);
+  new_sock = accept(sockfd, (struct sockaddr*)&new_addr, &addr_size);
+  write_file(new_sock,name);
+  printf("[+]Data written in the file successfully.\n");
+
+  pthread_exit(0);
+ 
 }

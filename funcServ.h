@@ -56,6 +56,12 @@ int checkPseudo(data* data, char* pseudo); // See if a username is already in us
 
 void * closeThread(data* datas); // Thread for closing a receiveSend thread
 
+char* listFile(char* content); // Print files list of the server
+
+void write_file(int sockfd, char* filename);
+
+void file(char* filename);
+
 static inline void rk_sema_init(struct rk_sema *s, uint32_t value) { // initialize a semaphore
     #ifdef __APPLE__
         dispatch_semaphore_t *sem = &s->sem;
