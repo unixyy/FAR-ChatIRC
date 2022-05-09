@@ -4,4 +4,5 @@
 &pfile -- list files in current directory
 &sfile -- list files of the server
 &send filename -- upload a file on the server
+&receive filename -- download a file from the server
 @quit -- close the session

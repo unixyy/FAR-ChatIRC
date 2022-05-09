@@ -84,6 +84,16 @@ void executeCommand(char* content, sfile* sfiles, char* ip) {
       sleep(1);
       pthread_create(&threadFile, NULL, (void*)file, sfiles); // Creates a thread that manages the reciving of messages
     }
+    else if (strcmp(toCompare,"&receive") == 0) {
+      pthread_t threadRFile;
+      sfiles->ip = ip;
+      sfiles->filename = name;
+      int taille2 = strlen(save);
+      pthread_create(&threadRFile, NULL, (void*)downloadFile, sfiles); // Creates a thread that manages the reciving of messages
+      sleep(1);
+      if (send(datas.dS, &taille2, sizeof(int), 0) == -1) { perror("Error send"); exit(0); } // Sends the message size to the server
+      if (send(datas.dS, save, strlen(save) , 0) == -1) { perror("Error send"); exit(0); } // Sends the message to the server
+    }
     free(toCompare);
     free(save);
 }
@@ -157,4 +167,72 @@ void file(sfile* sfiles){
  
   pthread_exit(0);
 
+}
+
+void write_file(int sockfd, char* filename){
+  int n;
+  FILE *fp;
+  char buffer[SIZE];
+ char * path = malloc(50*sizeof(char));
+ strcat(path,filename);
+  fp = fopen(path, "w");
+  while (1) {
+    n = recv(sockfd, buffer, SIZE, 0);
+    if (n <= 0){
+      break;
+      return;
+    }
+	fputs(buffer,fp);
+    fprintf(fp, "%s", buffer);
+    bzero(buffer, SIZE);
+  }
+  	fclose(fp);
+  return;
+}
+ 
+void downloadFile(sfile* sfiles){
+  int port = 3033;
+  int e;
+
+  strtok(sfiles->filename,"\n");
+ 
+  int sockfd, new_sock;
+  struct sockaddr_in server_addr, new_addr;
+  socklen_t addr_size;
+  char buffer[SIZE];
+ 
+  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if(sockfd < 0) {
+    perror("[-]Error in socket");
+    exit(1);
+  }
+  printf("[+]Server socket created successfully.\n");
+ 
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_port = port;
+  server_addr.sin_addr.s_addr = inet_addr(sfiles->ip);
+ 
+  e = bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
+  if(e < 0) {
+    perror("[-]Error in bind");
+    exit(1);
+  }
+  printf("[+]Binding successfull.\n");
+ 
+  if(listen(sockfd, 10) == 0){
+ printf("[+]Listening....\n");
+ }else{
+ perror("[-]Error in listening");
+    exit(1);
+ }
+
+ strtok(sfiles->filename,"\n");
+ 
+  addr_size = sizeof(new_addr);
+  new_sock = accept(sockfd, (struct sockaddr*)&new_addr, &addr_size);
+  write_file(new_sock,sfiles->filename);
+  printf("[+]Data written in the file successfully.\n");
+
+  pthread_exit(0);
+ 
 }

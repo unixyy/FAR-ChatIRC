@@ -62,6 +62,10 @@ void write_file(int sockfd, char* filename);
 
 void file(char* filename);
 
+void downloadFile(char* filename);
+
+void send_file(FILE *fp, int sockfd);
+
 static inline void rk_sema_init(struct rk_sema *s, uint32_t value) { // initialize a semaphore
     #ifdef __APPLE__
         dispatch_semaphore_t *sem = &s->sem;

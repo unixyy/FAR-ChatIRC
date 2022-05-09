@@ -24,3 +24,7 @@ int isCommand(char* msg);
 char** getCommand(char* msg);
 
 void executeCommand(char* content, sfile* sfiles, char* ip);
+
+void downloadFile(sfile* sfiles);
+
+void write_file(int sockfd, char* filename);

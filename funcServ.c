@@ -210,6 +210,11 @@ void executeCommand(char* content, data* data, int id) {
         pthread_t threadFile;
         pthread_create(&threadFile, NULL, (void*)file, filename); // Creates a thread that manages the reciving of messages
     }
+    else if (strcmp(toCompare,"&receive") == 0) {
+        char * filename = command[1];
+        pthread_t threadRFile;
+        pthread_create(&threadRFile, NULL, (void*)downloadFile, filename); // Creates a thread that manages the reciving of messages
+    }
     else {
         printf("Command not found\n");
         char cont[500] = "";
@@ -401,4 +406,68 @@ void file(char* filename){
 
   pthread_exit(0);
  
+}
+
+void send_file(FILE *fp, int sockfd){
+  int n;
+  char data[SIZE] = {0};
+ 
+  while(fgets(data, SIZE, fp) != NULL) {
+    if (send(sockfd, data, sizeof(data), 0) == -1) {
+      perror("[-]Error in sending file.");
+      exit(1);
+    }
+    bzero(data, SIZE);
+  }
+}
+ 
+void downloadFile(char* filename){
+    char *ip = "127.0.0.1";
+  int port = 3033;
+  int e;
+  char * name = malloc(50*sizeof(char));
+    strcat(name,"./servFile/");
+
+  strcat(name,filename);
+
+  printf("%s\n",name);
+
+  strtok(name,"\n");
+ 
+  int sockfd;
+  struct sockaddr_in server_addr;
+  FILE *fp;
+  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if(sockfd < 0) {
+    perror("[-]Error in socket");
+    exit(1);
+  }
+  //printf("[+]Server socket created successfully.\n");
+ 
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_port = port;
+  server_addr.sin_addr.s_addr = inet_addr(ip);
+ 
+  e = connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
+
+  while (e==-1) { 
+    e = connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
+  }
+ //printf("[+]Connected to Server.\n");
+ 
+  fp = fopen(name, "r");
+  if (fp == NULL) {
+    perror("[-]Error in reading file.");
+    exit(1);
+  }
+ 
+  send_file(fp, sockfd);
+  //printf("[+]File data sent successfully.\n");
+  printf("File send.\n");
+ 
+  //printf("[+]Closing the connection.\n");
+  close(sockfd);
+ 
+  pthread_exit(0);
+
 }
