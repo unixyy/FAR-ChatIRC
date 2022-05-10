@@ -8,6 +8,8 @@
 #include <pthread.h>
 #include <dirent.h>
 #include "funcServ.h"
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #define SIZE 1024
 #define haveToStop "@quit"
@@ -136,7 +138,7 @@ void deleteUser(data* data, int id) { // Removes a user from the user list
 }
 
 int isCommand(char* msg) { // Determines if the received message contains a command
-    if ((msg[0] == '/') || (msg[0] == '&')) {
+    if ((msg[0] == '/') || (msg[0] == '&')) {
         return 1;
     }
     else {
@@ -194,7 +196,7 @@ void executeCommand(char* content, data* data, int id) {
         char cont[500] = "";
         personalMessage(helpMessage(&cont), data->arrayName[id], data,id);
     }
-    else if (strcmp(toCompare,"&sfile") == 0) { // Files list of the server
+    else if (strcmp(toCompare,"/files") == 0) { // Files list of the server
         char cont[500] = "";
         personalMessage(listFile(&cont), data->arrayName[id], data,id);
     }
@@ -205,12 +207,12 @@ void executeCommand(char* content, data* data, int id) {
         char cont[500] = "";
         personalMessage(listClient(&cont,data), data->arrayName[id], data,id);
     }
-    else if (strcmp(toCompare,"&send") == 0) {
+    else if (strcmp(toCompare,"&up") == 0) {
         char * filename = command[1];
         pthread_t threadFile;
         pthread_create(&threadFile, NULL, (void*)file, filename); // Creates a thread that manages the reciving of messages
     }
-    else if (strcmp(toCompare,"&receive") == 0) {
+    else if (strcmp(toCompare,"&dl") == 0) {
         char * filename = command[1];
         pthread_t threadRFile;
         pthread_create(&threadRFile, NULL, (void*)downloadFile, filename); // Creates a thread that manages the reciving of messages
@@ -225,6 +227,12 @@ void executeCommand(char* content, data* data, int id) {
 
 char* listFile(char* content) { // Print files list of the server
     struct dirent *dir;
+    struct stat st = {0};
+
+    if (stat("/servFile", &st) == -1) {
+        mkdir("/servFile", 0700);
+    }
+
     DIR *d = opendir("./servFile"); 
     if (d)
     {
@@ -467,6 +475,7 @@ void downloadFile(char* filename){
  
   //printf("[+]Closing the connection.\n");
   close(sockfd);
+  //shutdown(sockfd, 2); // #
  
   pthread_exit(0);
 

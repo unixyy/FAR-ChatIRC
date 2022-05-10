@@ -87,7 +87,6 @@ void  INThandler(int sig) { // To manage control c
   if (c == 'y' || c == 'Y') { 
     shutdown(datas.dS, 2);
     printf("End of program\n");
-    for (int i=0;i<21;i++) { pthread_kill(thread[i], SIGTERM);}
     exit(0);
   } else { signal(SIGINT, INThandler); }
   getchar(); // Get new line character

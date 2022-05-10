@@ -69,7 +69,7 @@ void  INThandler(int sig) { // To manage control c
   signal(sig, SIG_IGN);
   printf("\nOUCH, did you hit Ctrl-C?\n""Do you really want to quit? [y/n] ");
   c = getchar();
-  if (c == 'y' || c == 'Y') { printf("Disconnection...\n"); pthread_kill(my_thread, SIGTERM); exit(0); }    
+  if (c == 'y' || c == 'Y') { printf("Disconnection...\n"); exit(0); }    
   else { signal(SIGINT, INThandler); }
   getchar(); // Get new line character
 }

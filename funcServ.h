@@ -79,9 +79,9 @@ static inline void rk_sema_wait(struct rk_sema *s) { // Lock a semaphore
     #ifdef __APPLE__
         dispatch_semaphore_wait(s->sem, DISPATCH_TIME_FOREVER);
     #else
-        int r;
-        do { r = sem_wait(&s->sem);} 
-        while (r == -1 && errno == EINTR);
+        
+        sem_wait(&s->sem); 
+        
     #endif
 }
 

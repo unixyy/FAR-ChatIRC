@@ -71,20 +71,28 @@ void executeCommand(char* content, sfile* sfiles, char* ip) {
     strcat(save,name);
     strtok(toCompare,"\0");
     strtok(toCompare,"\n");
-    if (strcmp(toCompare,"&pfile") == 0) { // Help command
+    if (strcmp(toCompare,"&files") == 0) { // Help command
         listFile();
     }
-    else if (strcmp(toCompare,"&send") == 0) { // Files list of the server
+    else if (strcmp(toCompare,"&up") == 0) { // Files list of the server
       pthread_t threadFile;
       sfiles->ip = ip;
       sfiles->filename = name;
       int taille = strlen(save);
       if (send(datas.dS, &taille, sizeof(int), 0) == -1) { perror("Error send"); exit(0); } // Sends the message size to the server
       if (send(datas.dS, save, strlen(save) , 0) == -1) { perror("Error send"); exit(0); } // Sends the message to the server
+      /*
+      // Port disponible
+      s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      s.bind(('', 0))
+      addr = s.getsockname()
+      print(addr[1])
+      s.close()
+*/
       sleep(1);
       pthread_create(&threadFile, NULL, (void*)file, sfiles); // Creates a thread that manages the reciving of messages
     }
-    else if (strcmp(toCompare,"&receive") == 0) {
+    else if (strcmp(toCompare,"&dl") == 0) {
       pthread_t threadRFile;
       sfiles->ip = ip;
       sfiles->filename = name;
@@ -160,10 +168,11 @@ void file(sfile* sfiles){
  
   send_file(fp, sockfd);
   //printf("[+]File data sent successfully.\n");
-  printf("File send.\n");
+  printf("File sent.\n");
  
   //printf("[+]Closing the connection.\n");
   close(sockfd);
+  //shutdown(sockfd, 2); // #
  
   pthread_exit(0);
 

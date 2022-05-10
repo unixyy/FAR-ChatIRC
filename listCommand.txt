@@ -1,8 +1,15 @@
+
+Server Commands : -- commands that affect the server
+
 /help -- command to have the list of possible commands
 /msg user content -- command to send a private message to a user
 /list -- show the list of available users
-&pfile -- list files in current directory
-&sfile -- list files of the server
-&send filename -- upload a file on the server
-&receive filename -- download a file from the server
+/files -- list files of the server
+
+System commands : --commands that affect the user system
+
+&files -- list files of the server
+&up filename -- upload a file on the server
+&dl filename -- download a file from the server
+
 @quit -- close the session
