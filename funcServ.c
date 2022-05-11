@@ -228,9 +228,8 @@ void executeCommand(char* content, data* data, int id) {
 char* listFile(char* content) { // Print files list of the server
     struct dirent *dir;
     struct stat st = {0};
-
-    if (stat("/servFile", &st) == -1) {
-        mkdir("/servFile", 0700);
+    if (stat("./servFile", &st) == -1) {
+        mkdir("./servFile", 0700);
     }
 
     DIR *d = opendir("./servFile"); 
@@ -438,10 +437,8 @@ void downloadFile(char* filename){
 
   strcat(name,filename);
 
-  printf("%s\n",name);
-
   strtok(name,"\n");
- 
+
   int sockfd;
   struct sockaddr_in server_addr;
   FILE *fp;
