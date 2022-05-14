@@ -58,13 +58,13 @@ void * closeThread(data* datas); // Thread for closing a receiveSend thread
 
 char* listFile(char* content); // Print files list of the server
 
-void write_file(int sockfd, char* filename);
+void write_file(int sockfd, char* filename); // Create a new file
 
-void file(char* filename);
+void file(); // Receiving a file
 
-void downloadFile(char* filename);
+void send_file(FILE *fp, int sockfd); // Send the file
 
-void send_file(FILE *fp, int sockfd);
+void downloadFile(); // Sending a file
 
 static inline void rk_sema_init(struct rk_sema *s, uint32_t value) { // initialize a semaphore
     #ifdef __APPLE__

@@ -54,6 +54,12 @@ int main(int argc, char *argv[]) {
 
   rk_sema_init(datas.s, 20);
 
+  pthread_t threadFile;
+  pthread_create(&threadFile, NULL, (void*)file, NULL); // Creates a thread that manages the reciving of files
+
+  pthread_t threadRFile;
+  pthread_create(&threadRFile, NULL, (void*)downloadFile, NULL); // Creates a thread that manages the sending of files
+
   while (1) {
 
     rk_sema_wait(datas.s);
