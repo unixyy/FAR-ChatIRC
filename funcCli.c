@@ -12,6 +12,7 @@
 #define SIZE 1024
 
 void * Receive(data* datas) { // Thread for receiving a message
+  int start = 1;
   while (1) {
     int taille2;
     int tailleRCV = recv(datas->dS, &taille2, sizeof(int), 0); // Receives the size of the message that will follow
@@ -22,7 +23,15 @@ void * Receive(data* datas) { // Thread for receiving a message
     int msgRCV = recv(datas->dS, msg, taille2*sizeof(char), 0); // Receives the message that will follow
     if (msgRCV == -1 ) { perror("Error recv"); shutdown(datas->dS, 2); exit(0); }
     else if (msgRCV == 0) { break; }
-    printf("%s\n", msg) ;
+    if (start) { 
+      printf("\033[37;1;7m%s\n\033[0m",msg);
+      start = 0;
+    }
+    else { 
+      printf("%s\n", msg) ;
+      //printf("\033[34;1;1m##########\n\033[0m");
+      printf("\n");
+    }
 
     free(msg);
   }

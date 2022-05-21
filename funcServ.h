@@ -19,6 +19,11 @@ struct data {
     int dS;
     int* arrayId[20];
     char* arrayName[20];
+
+    // NEW
+    int* arrayIdChannel[20];
+    char* arrayChannelName[20];
+
     int actualId;
     struct rk_sema* s;
     pthread_t* threadToClose[20];
@@ -48,11 +53,15 @@ char* idToName(int id, data* data); // Retrieves the correct id for a username
 
 void * receiveSend(data* datas, pthread_mutex_t* mutex); // Thread for receiving and sending a message
 
-int nextEmpty(data* data); // Returns the index of the first empty cell of an array
+int nextEmpty(data* data); // Returns the index of the first empty cell of ArrayId
+
+int nextEmptyChannel(data* data); // Returns the index of the first empty cell of ArrayChannelName
 
 void deleteUser(data* data, int id); // Removes a user from the user list
 
 int checkPseudo(data* data, char* pseudo); // See if a username is already in use
+
+int checkChannel(data* data, char* channel); // See if a channel name is already in use
 
 void * closeThread(data* datas); // Thread for closing a receiveSend thread
 
@@ -65,6 +74,20 @@ void file(); // Receiving a file
 void send_file(FILE *fp, int sockfd); // Send the file
 
 void downloadFile(); // Sending a file
+
+void createChannel(char* channel, data* data);
+
+void deleteChannel(char* channel, data* data);
+
+void connectChannel(char* channel,int index, data* data);
+
+char* listChannels(char* content, data* data);
+
+int nameToIdChannel(char* channel, data* data);
+
+void messageChannel(data* datas, char* msg, int index);
+
+char * listClientChannel(char* content, data* data, int id);
 
 static inline void rk_sema_init(struct rk_sema *s, uint32_t value) { // initialize a semaphore
     #ifdef __APPLE__

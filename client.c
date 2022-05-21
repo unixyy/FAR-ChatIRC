@@ -34,12 +34,17 @@ int main(int argc, char *argv[]) {
 
   pthread_create(&my_thread, NULL, (void*)Receive, &datas); // Creates a thread that manages the reciving of messages
 
-  printf("Connection...\n");
+  printf("\033[31;1;%dmConnection...\n\033[0m",1);
+  printf("\n");
+  //printf("\x1B[48;0;%dm", 1);
+  //printf("\x1B[48;5;%dm\n", 0);
 
   while (!stop && !datas.stop) {
 
     char *m = (char *)malloc(sizeof(char)*30);
     fgets(m, sizeof(char)*30, stdin); // Message to send
+         //printf("\033[34;1;1m##########\n\033[0m");
+         printf("\n");
 
     strtok(m,"\n");
 
@@ -59,7 +64,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  printf("Disconnection...\n");
+  printf("\033[31;1;%dmDisconnection...\n\033[0m",1);
   pthread_kill(my_thread, SIGTERM); // Kill the receive thread
 
 }

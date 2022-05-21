@@ -43,10 +43,14 @@ int main(int argc, char *argv[]) {
   datas.s = &s;
   for (int i = 0; i < 20; i++) {
       datas.arrayName[i] = calloc(40,sizeof(char));
+      datas.arrayChannelName[i] = calloc(40,sizeof(char));
+      datas.arrayIdChannel[i] = (int*)0;
       datas.arrayId[i] = (int*)-1;
       datas.isClose[i] = 0;
       strcpy(datas.arrayName[i],"empty");
+      strcpy(datas.arrayChannelName[i],"empty");
   }
+  strcpy(datas.arrayChannelName[0],"public");
 
   socklen_t lg = sizeof(struct sockaddr_in);
 
@@ -61,7 +65,6 @@ int main(int argc, char *argv[]) {
   pthread_create(&threadRFile, NULL, (void*)downloadFile, NULL); // Creates a thread that manages the sending of files
 
   while (1) {
-
     rk_sema_wait(datas.s);
 
     int next = nextEmpty(&datas);
@@ -78,11 +81,9 @@ int main(int argc, char *argv[]) {
     pthread_create(&thread[20], NULL, closeThread, &datas); // Creates a thread that manages the closing of receiveSend threads
 
     pthread_mutex_unlock(&mutex);
-
   }
 
   return 0;
-
 }
 
 void  INThandler(int sig) { // To manage control c
