@@ -50,7 +50,8 @@ int main(int argc, char *argv[]) {
       strcpy(datas.arrayName[i],"empty");
       strcpy(datas.arrayChannelName[i],"empty");
   }
-  strcpy(datas.arrayChannelName[0],"public");
+  channelList(&datas);
+  //strcpy(datas.arrayChannelName[0],"public");
 
   socklen_t lg = sizeof(struct sockaddr_in);
 
@@ -91,7 +92,8 @@ void  INThandler(int sig) { // To manage control c
   signal(sig, SIG_IGN);
   printf("\nOUCH, did you hit Ctrl-C?\n""Do you really want to quit? [y/n] ");
   c = getchar();
-  if (c == 'y' || c == 'Y') { 
+  if (c == 'y' || c == 'Y') {
+    saveChannels(&datas);
     shutdown(datas.dS, 2);
     printf("End of program\n");
     exit(0);

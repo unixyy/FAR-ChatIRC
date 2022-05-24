@@ -239,7 +239,7 @@ void executeCommand(char* content, data* data, int id) {
     {
         broadcast(data, command[2], id);
     }
-    else if (strcmp(toCompare, "/chan") == 0)
+    else if (strcmp(toCompare, "/chann") == 0)
     {
         char cont[500] = "";
         personalMessage(listChannels(&cont,data), data->arrayName[id], data,id);
@@ -322,6 +322,44 @@ char* helpMessage(char* content) {// Reads the list of available commands in a f
     while((c=fgetc(f))!=EOF){ content[i] = c; i++; } // There are some lines
     fclose(f);
     return content;
+}
+
+void channelList(data* data){
+    char* content = malloc(1000*sizeof(char));
+    FILE *f;
+    char c;
+    f = fopen("listChannel.txt", "rt");
+    int i = 0;
+    while((c=fgetc(f))!=EOF){ 
+        content[i] = c;
+        i++; 
+    } // There are some lines
+    fclose(f);
+
+    char d[] = "\n";
+    char *p = strtok(content, d);
+    int j = 0;
+    while((p != NULL) && (j<20)) { // Recover the first two parts
+        strcpy(data->arrayChannelName[j],p);
+        p = strtok(NULL, d);
+        j++;
+    }
+
+}
+
+void saveChannels(data* data) {
+    FILE *f;
+    char c;
+    f = fopen("listChannel.txt", "w");
+    int i = 0;
+    while(i<20){ 
+        if (strcmp(data->arrayChannelName[i],"empty")!=0) {
+            fwrite(data->arrayChannelName[i], 1, strlen(data->arrayChannelName[i]), f);   
+            fwrite("\n", 1, 1, f);   
+        }
+        i++; 
+    }
+    fclose(f);
 }
 
 char * listClient(char* content, data* data) { // Returns the list of online clients

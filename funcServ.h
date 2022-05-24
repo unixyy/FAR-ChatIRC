@@ -89,6 +89,10 @@ void messageChannel(data* datas, char* msg, int index);
 
 char * listClientChannel(char* content, data* data, int id);
 
+void channelList(data* data);
+
+void saveChannels(data* data);
+
 static inline void rk_sema_init(struct rk_sema *s, uint32_t value) { // initialize a semaphore
     #ifdef __APPLE__
         dispatch_semaphore_t *sem = &s->sem;

@@ -7,7 +7,7 @@ Server Commands : -- commands that affect the server
 /list -- show the list of available users
 /listC -- show the list of users in the current channel
 /files -- list files of the server
-/chan -- list of channels available on the server
+/chann -- list of channels available on the server
 /connect channel -- connect to a certain channel
 /create channel -- create a new channel
 /delete channel -- delete an existing channel
