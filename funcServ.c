@@ -239,6 +239,15 @@ void executeCommand(char* content, data* data, int id) {
     {
         broadcast(data, command[2], id);
     }
+    else if (strcmp(toCompare, "/report") == 0)
+    {
+        // ! TODO : CA FAIT BIZARRE
+        printf("ok\n");
+        printf("%s\n",data->arrayName[id]);
+        printf("%s\n",command[1]);
+        printf("%s\n",command[2]);
+        printf("%s : %s %s\n",data->arrayName[id],command[1],command[2]);
+    }
     else if (strcmp(toCompare, "/chann") == 0)
     {
         char cont[500] = "";

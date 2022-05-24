@@ -12,6 +12,7 @@ Server Commands : -- commands that affect the server
 /create channel -- create a new channel
 /delete channel -- delete an existing channel
 /all -s content -- send a message to all users
+/report content -- send a message to the admin
 
 System commands : --commands that affect the user system
 
