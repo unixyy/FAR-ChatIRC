@@ -34,7 +34,7 @@ void * receiveSend(data* datas, pthread_mutex_t* mutex) { // Thread for receivin
         int msgRCV = recv(datas->arrayId[index], msg, size*sizeof(char), 0); // Receives a message from a client
         if (msgRCV == -1 ) { perror("Error recv 2 "); shutdown(index, 2); shutdown((*datas).dS, 2); exit(0); }
         else if (msgRCV == 0) { break; }
-        printf("Message received : %s\n", msg) ;
+        //printf("Message received : %s\n", msg) ;
 
         if(firstmsg == 1) { // First message sent
             if (checkPseudo(datas,msg) == 1) { // Nickname already used
@@ -74,16 +74,19 @@ void * receiveSend(data* datas, pthread_mutex_t* mutex) { // Thread for receivin
   pthread_exit(0);
 }
 
-void broadcast(data* datas, char* msg, int index) { // Broadcast a message to all the clients
+void broadcast(data* datas, char* text1,char* text2, int index) { // Broadcast a message to all the clients
     char *sender = calloc(30, sizeof(char));
     strcpy(sender,idToName(datas->arrayId[index], datas));
     strtok(sender, "\n");
     int size = 103 + strlen(sender); 
     char* content = (char *)malloc(sizeof(char)*size);
-    strcpy(content,"");
+    strcpy(content,"[ALL] ");
     strcat(content,sender);
     strcat(content, " : ");
-    strcat(content, msg);
+    strcat(content, text1);
+    strcat(content, " ");
+    strcat(content, text2);
+
         for (int i=0;i<20;i++) {
             if ((datas->arrayId[index] != datas->arrayId[i]) && (datas->arrayId[i] != -1)) { // If the client is different from the one sending
                 if (send(datas->arrayId[i], &size, sizeof(int), 0) == -1) { perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS,2); exit(0); }
@@ -92,7 +95,7 @@ void broadcast(data* datas, char* msg, int index) { // Broadcast a message to al
         for (int i=0;i<20;i++) {
             if ((datas->arrayId[index] != datas->arrayId[i]) && (datas->arrayId[i] != -1)) { // If the client is different from the one sending
                 if (send(datas->arrayId[i], content, size*sizeof(char), 0) == -1) {  perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS, 2); exit(0); }
-                    printf("Message sent\n");
+                    //printf("Message sent\n");
             }
         }
 }
@@ -117,7 +120,7 @@ void messageChannel(data* datas, char* msg, int index) {
         for (int i=0;i<20;i++) {
             if ((datas->arrayId[index] != datas->arrayId[i]) && (datas->arrayId[i] != -1) && ((datas->arrayIdChannel[i])==myChannel)) { // If the client is different from the one sending
                 if (send(datas->arrayId[i], content, size*sizeof(char), 0) == -1) {  perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS, 2); exit(0); }
-                    printf("Message sent\n");
+                    //printf("Message sent\n");
             }
         }
 }
@@ -209,6 +212,7 @@ void executeCommand(char* content, data* data, int id) {
     char * toCompare = command[0];
     strtok(toCompare,"\0");
     strtok(toCompare,"\n");
+    // for(int i=0;i<3;i++) { printf("%s\n", command[i]); }
     if (strcmp(toCompare,"/help") == 0) { // Help command
         char cont[1000] = "";
         personalMessage(helpMessage(&cont), data->arrayName[id], data,id);
@@ -237,16 +241,11 @@ void executeCommand(char* content, data* data, int id) {
     }
     else if (strcmp(toCompare, "/all") == 0)
     {
-        broadcast(data, command[2], id);
+        broadcast(data, command[1],command[2], id);
     }
     else if (strcmp(toCompare, "/report") == 0)
     {
-        // ! TODO : CA FAIT BIZARRE
-        printf("ok\n");
-        printf("%s\n",data->arrayName[id]);
-        printf("%s\n",command[1]);
-        printf("%s\n",command[2]);
-        printf("%s : %s %s\n",data->arrayName[id],command[1],command[2]);
+        report(data->arrayName[id],command[1],command[2]);
     }
     else if (strcmp(toCompare, "/chann") == 0)
     {
@@ -261,6 +260,17 @@ void executeCommand(char* content, data* data, int id) {
     }
     free(toCompare);
 }
+
+void report(char* id, char* text1, char* text2){
+    char cont[500] = "";
+    strcpy(cont,id);
+    strcat(cont," : ");
+    strcat(cont,text1);
+    strcat(cont,text2);
+    printf("%s\n",cont);
+
+}
+
 
 char* listFile(char* content) { // Print files list of the server
     struct dirent *dir;
@@ -529,7 +539,7 @@ void downloadFile() { // Sending a file
     if(e < 0) { perror("[-]Error in bind"); exit(1); }
     printf("[+]Binding successfull.\n");
  
-    if(listen(sockfd, 10) == 0) { printf("[+]Listening....\n"); }
+    if(listen(sockfd, 10) == 0) { printf("[+]Listening....\n\n\n"); }
     else { perror("[-]Error in listening"); exit(1); }
 
     struct rk_sema s;

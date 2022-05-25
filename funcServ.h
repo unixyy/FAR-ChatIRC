@@ -47,6 +47,8 @@ char * listClient(char* content, data* data); // Returns the list of online clie
 
 char* helpMessage(char* content); // Reads the list of available commands in a file
 
+void broadcast(data *datas, char *text1, char *text2, int index);
+
 int nameToId(char* username, data* data); // Retrieves the username corresponding to an id
 
 char* idToName(int id, data* data); // Retrieves the correct id for a username
@@ -92,6 +94,8 @@ char * listClientChannel(char* content, data* data, int id);
 void channelList(data* data);
 
 void saveChannels(data* data);
+
+void report(char* id, char* text1, char* text2);
 
 static inline void rk_sema_init(struct rk_sema *s, uint32_t value) { // initialize a semaphore
     #ifdef __APPLE__

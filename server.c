@@ -65,6 +65,9 @@ int main(int argc, char *argv[]) {
   pthread_t threadRFile;
   pthread_create(&threadRFile, NULL, (void*)downloadFile, NULL); // Creates a thread that manages the sending of files
 
+  /*pthread_t threadAdmin;
+  pthread_create(&threadAdmin, NULL, (void*)admin, NULL);*/
+
   while (1) {
     rk_sema_wait(datas.s);
 
@@ -76,7 +79,7 @@ int main(int argc, char *argv[]) {
     pthread_mutex_lock(&mutex);
     datas.arrayId[next] = idClient;
     datas.actualId = idClient;
-    printf("Connected client\n");
+    //printf("Connected client\n");
       
     pthread_create(&thread[next], NULL, receiveSend, &datas); // Creates a thread that manages the relaying of messages
     pthread_create(&thread[20], NULL, closeThread, &datas); // Creates a thread that manages the closing of receiveSend threads
