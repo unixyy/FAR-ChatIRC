@@ -1,17 +1,13 @@
 
-struct data {
-    int dS;
-    int stop;
-}datas;
+// Information to communicate with the server
+struct data { int dS; int stop; } datas;
 typedef struct data data;
 
-struct sfile {
-    char* ip;
-    char* filename;
-}sfiles;
+// File management structure
+struct sfile { char* ip; char* filename; } sfiles; 
 typedef struct sfile sfile;
 
-void * Receive(data* datas); // Thread for receiving a message
+void * Receive(data* datas); // Thread that manages the reception of messages
 
 int listFile(); // Print files list of current directory
 
@@ -27,4 +23,4 @@ void executeCommand(char* content, sfile* sfiles, char* ip); // Executes a parti
 
 void downloadFile(sfile* sfiles); // Receiving a file from the server
 
-void write_file(int sockfd, char* filename); // Create the new file
+void write_file(int sockfd, char* filename); // Create a new file with a content

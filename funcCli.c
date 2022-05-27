@@ -11,60 +11,75 @@
 
 #define SIZE 1024
 
-void * Receive(data* datas) { // Thread for receiving a message
+/**
+ * @brief Thread that manages the reception of messages
+ * 
+ * @param datas Information to communicate with the server
+ */
+void * Receive(data* datas) {
   int start = 1;
   while (1) {
-    int taille2;
-    int tailleRCV = recv(datas->dS, &taille2, sizeof(int), 0); // Receives the size of the message that will follow
-    if (tailleRCV == -1) { perror("Error recv"); shutdown(datas->dS, 2); exit(0);}
-    else if (tailleRCV == 0) { break; }
+    int size;
+    int sizeRCV = recv(datas->dS, &size, sizeof(int), 0); // Receives the size of the message that will follow
+    if (sizeRCV == -1) { perror("[-]Error recv"); shutdown(datas->dS, 2); exit(0);}
+    else if (sizeRCV == 0) { break; }
 
-    char *msg = (char *)malloc(sizeof(char)*taille2);
-    int msgRCV = recv(datas->dS, msg, taille2*sizeof(char), 0); // Receives the message that will follow
-    if (msgRCV == -1 ) { perror("Error recv"); shutdown(datas->dS, 2); exit(0); }
+    char *msg = (char *)malloc(sizeof(char)*size);
+    int msgRCV = recv(datas->dS, msg, size*sizeof(char), 0); // Receives the message
+    if (msgRCV == -1 ) { perror("[-]Error recv"); shutdown(datas->dS, 2); exit(0); }
     else if (msgRCV == 0) { break; }
-    if (start) { 
-      printf("\033[37;1;7m%s\n\033[0m",msg);
-      start = 0;
-    }
-    else { 
-      printf("%s\n", msg) ;
-      //printf("\033[34;1;1m##########\n\033[0m");
-      printf("\n");
-    }
 
+    if (start) { printf("\033[37;1;7m%s\n\033[0m",msg); start = 0; } // To display the welcome message differently
+    else { printf("%s\n\n", msg); printf("\n");}
     free(msg);
   }
   datas->stop = 1;
   pthread_exit(0);
 }
 
+/**
+ * @brief Determines if the message contains a command
+ * 
+ * @param msg the message received
+ * @return 1 if the message contains a command, 0 otherwise
+ */
 int isCommand(char* msg) { // Determines if the message contains a command
     if (msg[0] == '&') { return 1; }
     else { return 0; }
 }
 
-char** getCommand(char* msg) { // Separates the information in a message
+/**
+ * @brief Separates the information in a message
+ * 
+ * @param msg 
+ * @return char** 
+ */
+char** getCommand(char* msg) {
     char * save = (char*)malloc(sizeof(char)*strlen(msg));
     strcpy(save,msg);
     char *datas[2];
-    for (int i=0;i<2;i++) { datas[i]=(char *)malloc(sizeof(char) * 200);}
+    for (int i=0;i<2;i++) { datas[i]=(char *)malloc(sizeof(char) * 200); } // Initialize the returned array
 
     char d[] = " ";
     char *p = strtok(msg, d);
     int i = 0;
-    while((p != NULL) && (i<2)) // Recover the two parts
-    {
+    while((p != NULL) && (i<2)) { // Recover the two parts of the command
         strcpy(datas[i],p);
         p = strtok(NULL, d);
         i++;
     }
     free(save);
-
     return datas;
 }
 
-void executeCommand(char* content, sfile* sfiles, char* ip) { // Executes a particular command
+/**
+ * @brief Executes a particular command
+ * 
+ * @param content Message containing the command
+ * @param sfiles File management structure
+ * @param ip Server ip address
+ */
+void executeCommand(char* content, sfile* sfiles, char* ip) {
     char * save = (char*)malloc(sizeof(char)*50);
     char ** command = getCommand(content);
     char * toCompare = command[0];
@@ -74,9 +89,7 @@ void executeCommand(char* content, sfile* sfiles, char* ip) { // Executes a part
     strcat(save,name);
     strtok(toCompare,"\0");
     strtok(toCompare,"\n");
-    if (strcmp(toCompare,"&files") == 0) { // List of personnal files
-        listFile();
-    }
+    if (strcmp(toCompare,"&files") == 0) { listFile(); } // List of personnal files
     else if (strcmp(toCompare,"&up") == 0) { // Upload a file on the server
       pthread_t threadFile;
       sfiles->ip = ip;
@@ -93,28 +106,42 @@ void executeCommand(char* content, sfile* sfiles, char* ip) { // Executes a part
     free(save);
 }
 
-int listFile() { // Print files list of current directory
+/**
+ * @brief // Print files list of current directory
+ * 
+ * @return A default 0
+ */
+int listFile() { 
     struct dirent *dir;
     DIR *d = opendir("."); 
     if (d) {
-      while ((dir = readdir(d)) != NULL) { // There are some files
-        printf("%s\n", dir->d_name);
-      }
+      while ((dir = readdir(d)) != NULL) { printf("%s\n", dir->d_name); } // There are some files
       closedir(d);
     }
     return 0;
 }
 
-void send_file(FILE *fp, int sockfd) { // Send the content of a file
+/**
+ * @brief // Send the content of a file
+ * 
+ * @param fp Name of the file
+ * @param sockfd Transmission socket number
+ */
+void send_file(FILE *fp, int sockfd) { 
   int n;
   char data[SIZE] = {0};
-  while(fread(data, sizeof(char), SIZE, fp) != NULL) { // There are data to send
-    if (send(sockfd, data, sizeof(data), 0) == -1) { perror("[-]Error in sending file."); exit(1);}
+  while(fread(data, sizeof(char), SIZE, fp) != (unsigned long) NULL) { // There are data to send
+    if (send(sockfd, data, sizeof(data), 0) == -1) { perror("[-]Error in sending file"); exit(1);}
     bzero(data, SIZE);
   }
 }
- 
-void file(sfile* sfiles) { // Sending a file to the server
+
+/**
+ * @brief // Sending a file to the server
+ * 
+ * @param sfiles File management structure
+ */
+void file(sfile* sfiles) { 
   int stop = 0;
   strtok(sfiles->filename,"\n");  
   struct dirent *dir;
@@ -124,7 +151,8 @@ void file(sfile* sfiles) { // Sending a file to the server
       if (strcmp(sfiles->filename,dir->d_name) == 0) { stop=1; }
     }
     closedir(d);
-  }  
+  }
+
   if (stop) { // Filename exists
     int port = 3030;
     int e;
@@ -143,20 +171,28 @@ void file(sfile* sfiles) { // Sending a file to the server
 
     while (e==-1) { e = connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));}
 
-    if( send(sockfd,sfiles->filename,50,0) < 0) { puts("Send failed"); exit(0); }
+    if( send(sockfd,sfiles->filename,50,0) < 0) { perror("[-]Send failed"); exit(0); }
  
     fp = fopen(sfiles->filename, "r");
-    if (fp == NULL) { perror("[-]Error in reading file."); exit(1);}
+    if (fp == NULL) { perror("[-]Error in reading file"); exit(1);}
  
     send_file(fp, sockfd); // Send the file
-    printf("File sent\n");
+    printf("## File sent ##\n");
  
     close(sockfd);
-  } else { printf("This file does not exist.\n"); }
+  } 
+  else { printf("## This file does not exist ##\n"); }
+
   pthread_exit(0);
 }
 
-void write_file(int sockfd, char* filename) { // Create the new file
+/**
+ * @brief Create a new file with a content
+ * 
+ * @param sockfd Transmission socket number
+ * @param filename Name of the file
+ */
+void write_file(int sockfd, char* filename) {
   int n;
   FILE *fp;
   char buffer[SIZE];
@@ -166,14 +202,19 @@ void write_file(int sockfd, char* filename) { // Create the new file
 
   n = recv(sockfd, buffer, SIZE, 0);
   
-  if (strlen(buffer)==0) { printf("This file does not exist.\n");}
-  else { fp = fopen(filename, "w"); fputs(buffer,fp); bzero(buffer, SIZE); printf("File received.\n");}
+  if (strlen(buffer)==0) { printf("## This file does not exist ##\n");}
+  else { fp = fopen(filename, "w"); fputs(buffer,fp); bzero(buffer, SIZE); printf("## File received ##\n");}
   
   fclose(fp);
   return;
 }
  
-void downloadFile(sfile* sfiles) { // Receiving a file from the server
+/**
+ * @brief Receiving a file from the server
+ * 
+ * @param sfiles File management structure
+ */
+void downloadFile(sfile* sfiles) {
   int port = 3033;
   int e;
   strtok(sfiles->filename,"\n");
@@ -193,7 +234,7 @@ void downloadFile(sfile* sfiles) { // Receiving a file from the server
 
   while (e==-1) { e = connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)); }
 
-  if( send(sockfd,sfiles->filename,50,0) < 0) { puts("Send failed"); exit(0); }
+  if( send(sockfd,sfiles->filename,50,0) < 0) { perror("[-]Send failed"); exit(0); }
 
   write_file(sockfd,sfiles->filename); // Receive the file
  

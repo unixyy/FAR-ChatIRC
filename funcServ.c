@@ -491,12 +491,7 @@ int checkPseudo(data* data, char* pseudo) { // See if a username is already in u
 
     int res = 0;
 
-    res = testRegex("^$",pseudo,1);
-
-    if (res != 1) { 
-        res = testRegex("^[a-zA-Z0-9]{5}",pseudo,0);
-    }
-
+    res = testRegex("^[a-zA-Z0-9]{5}",pseudo,1);
     if (res != 1) { 
         res = testRegex("(admin)",pseudo,1);
     }
