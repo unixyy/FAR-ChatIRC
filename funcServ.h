@@ -97,6 +97,16 @@ void saveChannels(data* data);
 
 void report(char* id, char* text1, char* text2);
 
+void admin(data* data);
+
+void kick(data* data, char* name);
+
+void adminPrivateMessage(char* msg, char* username, data* data);
+
+void adminBroadcast(data* datas, char* text1,char* text2);
+
+int testRegex(char* regex, char* content, int param);
+
 static inline void rk_sema_init(struct rk_sema *s, uint32_t value) { // initialize a semaphore
     #ifdef __APPLE__
         dispatch_semaphore_t *sem = &s->sem;

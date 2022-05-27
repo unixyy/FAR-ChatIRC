@@ -18,12 +18,10 @@ void  INThandler(int sig); // To manage control c
 int main(int argc, char *argv[]) {
 
   signal(SIGINT, INThandler);
-
-  printf("Start of the server\n");
   
   int dS = socket(PF_INET, SOCK_STREAM, 0); // Create a socket
   if (dS == -1) { perror("Socket error"); exit(0); }
-  printf("Socket created\n");
+  //printf("Socket created\n");
 
   struct sockaddr_in ad;
   ad.sin_family = AF_INET;
@@ -31,10 +29,10 @@ int main(int argc, char *argv[]) {
   ad.sin_port = htons(atoi(argv[1])); // Setup the server port with the number passed in parameter
 
   if (bind(dS, (struct sockaddr*)&ad, sizeof(ad)) == -1){ perror("Error bind"); exit(0); } // Name the socket
-  printf("Socket named\n");
+  //printf("Socket named\n");
 
   listen(dS, 7); // Setup the socket in listening mode
-  printf("Listening mode\n");
+  //printf("Listening mode\n");
 
   struct rk_sema s;
 
@@ -65,8 +63,10 @@ int main(int argc, char *argv[]) {
   pthread_t threadRFile;
   pthread_create(&threadRFile, NULL, (void*)downloadFile, NULL); // Creates a thread that manages the sending of files
 
-  /*pthread_t threadAdmin;
-  pthread_create(&threadAdmin, NULL, (void*)admin, NULL);*/
+  pthread_t threadAdmin;
+  pthread_create(&threadAdmin, NULL, (void*)admin, &datas);
+
+    printf("\033[34;1;1mSTART OF THE SERVER\n\033[0m");
 
   while (1) {
     rk_sema_wait(datas.s);
@@ -90,15 +90,16 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
+
 void  INThandler(int sig) { // To manage control c
   char  c;
   signal(sig, SIG_IGN);
-  printf("\nOUCH, did you hit Ctrl-C?\n""Do you really want to quit? [y/n] ");
+    printf("\033[34;1;1m\nOUCH, did you hit Ctrl-C ?\n""Do you really want to quit ? [y/n] \033[0m");
   c = getchar();
   if (c == 'y' || c == 'Y') {
     saveChannels(&datas);
     shutdown(datas.dS, 2);
-    printf("End of program\n");
+    printf("\033[34;1;1m\nEND OF PROGRAM\n\033[0m");
     exit(0);
   } else { signal(SIGINT, INThandler); }
   getchar(); // Get new line character

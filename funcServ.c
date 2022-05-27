@@ -10,6 +10,7 @@
 #include "funcServ.h"
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <regex.h>
 
 #define SIZE 1024
 #define haveToStop "@quit"
@@ -32,7 +33,7 @@ void * receiveSend(data* datas, pthread_mutex_t* mutex) { // Thread for receivin
 
         char *msg = (char *)malloc(sizeof(char)*size);
         int msgRCV = recv(datas->arrayId[index], msg, size*sizeof(char), 0); // Receives a message from a client
-        if (msgRCV == -1 ) { perror("Error recv 2 "); shutdown(index, 2); shutdown((*datas).dS, 2); exit(0); }
+        if (msgRCV == -1 ) { perror("Error recv 2 "); break; /*shutdown(index, 2); shutdown((*datas).dS, 2); exit(0);*/ }
         else if (msgRCV == 0) { break; }
         //printf("Message received : %s\n", msg) ;
 
@@ -40,12 +41,13 @@ void * receiveSend(data* datas, pthread_mutex_t* mutex) { // Thread for receivin
             if (checkPseudo(datas,msg) == 1) { // Nickname already used
                 int sizeMsgUsername = 50;
                 if (send(datas->arrayId[index], &sizeMsgUsername, sizeof(int), 0) == -1) { perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS,2); exit(0); }
-                if (send(datas->arrayId[index], "Nickname already taken, please choose another one", sizeMsgUsername*sizeof(char), 0) == -1) { perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS,2); exit(0); }
+                if (send(datas->arrayId[index], "## Nickname invalid, please choose another one ##", sizeMsgUsername*sizeof(char), 0) == -1) { perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS,2); exit(0); }
             } else {
                 pthread_mutex_lock(&mutex);
                 strtok(msg,"\n");
                 strcpy(datas->arrayName[index],msg);
                 pthread_mutex_unlock(&mutex);
+                personalMessage("## Nickname registered ##", datas->arrayName[index], datas,index);
                 firstmsg=0;
             }
         }
@@ -95,6 +97,27 @@ void broadcast(data* datas, char* text1,char* text2, int index) { // Broadcast a
         for (int i=0;i<20;i++) {
             if ((datas->arrayId[index] != datas->arrayId[i]) && (datas->arrayId[i] != -1)) { // If the client is different from the one sending
                 if (send(datas->arrayId[i], content, size*sizeof(char), 0) == -1) {  perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS, 2); exit(0); }
+                    //printf("Message sent\n");
+            }
+        }
+}
+
+void adminBroadcast(data* datas, char* text1,char* text2) { // Broadcast a message to all the clients
+    int size = 100;
+    char* content = (char *)malloc(sizeof(char)*size);
+    strcpy(content,"[ALL] admin : ");
+    strcat(content, text1);
+    strcat(content, " ");
+    strcat(content, text2);
+
+        for (int i=0;i<20;i++) {
+            if (datas->arrayId[i] != -1) { // If the client is different from the one sending
+                if (send(datas->arrayId[i], &size, sizeof(int), 0) == -1) { perror("Error send"); shutdown((*datas).dS,2); exit(0); }
+            }
+        }
+        for (int i=0;i<20;i++) {
+            if (datas->arrayId[i] != -1) { // If the client is different from the one sending
+                if (send(datas->arrayId[i], content, size*sizeof(char), 0) == -1) {  perror("Error send"); shutdown((*datas).dS, 2); exit(0); }
                     //printf("Message sent\n");
             }
         }
@@ -261,14 +284,47 @@ void executeCommand(char* content, data* data, int id) {
     free(toCompare);
 }
 
+void adminCommand(char* content, data* data) {
+    char ** command = getCommand(content);
+    char * toCompare = command[0];
+    strtok(toCompare,"\0");
+    strtok(toCompare,"\n");
+    if (strcmp(toCompare,"/msg") == 0) { // Private message
+        adminPrivateMessage(command[2], command[1], data);
+    } else if (strcmp(toCompare, "/all") == 0)
+    {
+        adminBroadcast(data, command[1],command[2]);
+    }
+    else if (strcmp(toCompare, "/kick") == 0)
+    {
+        kick(data, command[1]);
+    }
+    else
+    {
+        printf("Command not found\n");
+    }
+    free(toCompare);
+}
+
 void report(char* id, char* text1, char* text2){
     char cont[500] = "";
     strcpy(cont,id);
     strcat(cont," : ");
     strcat(cont,text1);
     strcat(cont,text2);
-    printf("%s\n",cont);
+    printf("%s\n\n",cont);
 
+}
+
+void kick(data* data, char* name) {
+    int id = nameToId(name,data);
+    //printf("%d\n",id);
+    if (id!=-1) { 
+        //personalMessage("You have been kicked", data->arrayName[id], data,id);
+        adminPrivateMessage("You have been kicked !", name, data);
+        shutdown(data->arrayId[id],2);
+        deleteUser(data,id);
+    }
 }
 
 
@@ -316,6 +372,22 @@ void privateMessage(char* msg, char* username, data* data, int index) { // Sends
     } else { printf("error\n"); }
 
     free(sender);
+    free(content);
+}
+
+void adminPrivateMessage(char* msg, char* username, data* data) { // Sends a private message to another user
+    int size = strlen(msg) + 20;
+    char* content = (char *)malloc(sizeof(char)*size);
+
+    strcpy(content,"Whisper from admin : ");
+    strcat(content, msg);
+
+    int id = nameToId(username, data);
+    if (id != -1) { // Correct username
+        int size = 200;
+        if (send(id, &size, sizeof(int), 0) == -1) { perror("Error send");shutdown(datas.dS,2); exit(0); }
+        if (send(id, content, size*sizeof(char),0) == -1) { perror("Error send");shutdown(datas.dS,2); exit(0); }
+    } else { printf("error\n"); }
     free(content);
 }
 
@@ -416,9 +488,39 @@ char * listClientChannel(char* content, data* data, int id) { // Returns the lis
 }
 
 int checkPseudo(data* data, char* pseudo) { // See if a username is already in use
-    for (int i=0;i<20;i++) {
-        if (strcmp(data->arrayName[i],pseudo) == 0) { return 1; }
+
+    int res = 0;
+
+    res = testRegex("^$",pseudo,1);
+
+    if (res != 1) { 
+        res = testRegex("^[a-zA-Z0-9]{5}",pseudo,0);
     }
+
+    if (res != 1) { 
+        res = testRegex("(admin)",pseudo,1);
+    }
+    if (res != 1) { 
+        for (int i=0;i<20;i++) {
+            if (strcmp(data->arrayName[i],pseudo) == 0) { res=1; }
+        }
+    }
+    return res;
+}
+
+int testRegex(char* regex, char* content, int param) {
+    regex_t reg;
+    int reti = regcomp(&reg, regex, REG_EXTENDED);
+    reti = regexec(&reg, content, 0, NULL, 0);
+    if (!reti && param == 1) {
+        regfree(&reg);
+        return 1;
+    }
+    if ((reti == REG_NOMATCH) && param == 0) {
+        regfree(&reg);
+        return 1;
+    }
+    regfree(&reg);
     return 0;
 }
 
@@ -450,7 +552,7 @@ void write_file(int sockfd, char* filename) { // Create a new file
 }
  
 void file() { // Receiving a file
-    printf("Receiving file thread : \n");
+    //printf("Receiving file thread : \n");
 
     struct stat st = {0};
     if (stat("./servFile", &st) == -1) { mkdir("./servFile", 0700);}
@@ -466,7 +568,7 @@ void file() { // Receiving a file
  
     sockfd = socket(AF_INET, SOCK_STREAM, 0); // Create the socket
     if(sockfd < 0) { perror("[-]Error in socket"); exit(1); }
-    printf("[+]Server socket created successfully.\n");
+    //printf("[+]Server socket created successfully.\n");
  
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = port;
@@ -474,9 +576,9 @@ void file() { // Receiving a file
     
     e = bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
     if(e < 0) { perror("[-]Error in bind"); exit(1); }
-    printf("[+]Binding successfull.\n");
+    //printf("[+]Binding successfull.\n");
     
-    if(listen(sockfd, 10) == 0) { printf("[+]Listening....\n");}
+    if(listen(sockfd, 10) == 0) { /*printf("[+]Listening....\n");*/}
     else { perror("[-]Error in listening"); exit(1); }
 
     struct rk_sema s;
@@ -488,12 +590,12 @@ void file() { // Receiving a file
         addr_size = sizeof(new_addr);
         new_sock = accept(sockfd, (struct sockaddr*)&new_addr, &addr_size); // Accept a client
         if (new_sock < 0) { perror("accept failed"); exit(1); }
-	    puts("Connection accepted");
+	    //puts("Connection accepted");
 
         while (recv(new_sock,buffer,50,0) > 0) {
             strtok(buffer,"\n");
             write_file(new_sock,buffer); // Receive the file
-            printf("[+]Data written in the file successfully.\n");
+            //printf("[+]Data written in the file successfully.\n");
         }
 
     rk_sema_post(&s);
@@ -512,7 +614,7 @@ void send_file(FILE *fp, int sockfd) { // Send the file
 }
  
 void downloadFile() { // Sending a file
-    printf("Sending file thread : \n");
+    //printf("Sending file thread : \n");
 
     struct stat st = {0};
     if (stat("./servFile", &st) == -1) { mkdir("./servFile", 0700);}
@@ -529,7 +631,7 @@ void downloadFile() { // Sending a file
  
     sockfd = socket(AF_INET, SOCK_STREAM, 0); // Create the socket
     if(sockfd < 0) { perror("[-]Error in socket"); exit(1); }
-    printf("[+]Server socket created successfully.\n");
+    //printf("[+]Server socket created successfully.\n");
  
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = port;
@@ -537,9 +639,9 @@ void downloadFile() { // Sending a file
  
     e = bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
     if(e < 0) { perror("[-]Error in bind"); exit(1); }
-    printf("[+]Binding successfull.\n");
+    //printf("[+]Binding successfull.\n");
  
-    if(listen(sockfd, 10) == 0) { printf("[+]Listening....\n\n\n"); }
+    if(listen(sockfd, 10) == 0) { /*printf("[+]Listening....\n\n\n"); */}
     else { perror("[-]Error in listening"); exit(1); }
 
     struct rk_sema s;
@@ -551,7 +653,7 @@ void downloadFile() { // Sending a file
         addr_size = sizeof(new_addr);
         new_sock = accept(sockfd, (struct sockaddr*)&new_addr, &addr_size); // Accept a client
         if (new_sock < 0) { perror("accept failed"); exit(1); }
-        puts("Connection accepted");
+        //puts("Connection accepted");
 
         while (recv(new_sock,buffer,50,0) > 0) {
             char* test = malloc(50*sizeof(char));
@@ -575,11 +677,11 @@ void downloadFile() { // Sending a file
                 if (fp == NULL) { perror("[-]Error in reading file."); exit(1);}
         
                 send_file(fp, new_sock); // Send the file
-                printf("File send.\n");
+                //printf("File send.\n");
             } else {
                 char data[SIZE] = {0};
                 send(new_sock, data, sizeof(data), 0);
-                printf("This file does not exist.\n");
+                //printf("This file does not exist.\n");
             }       
             free(test);
         }
@@ -642,3 +744,32 @@ char* listChannels(char* content, data* data){
     }
     return content;
 }
+
+void admin(data* data) {
+    printf("\033[31;1;1mAdmin connection...\n\n\033[0m");
+
+    printf("\033[37;1;7mIf you want to shut down the server you must write @quit and press Ctrl-C !\n\n\033[0m");
+
+    printf("\033[37;1;7mCommand list :\n\033[0m");
+    printf("\033[37;1;7m- /kick user\n\033[0m");
+    printf("\033[37;1;7m- /msg user content\n\033[0m");
+    printf("\033[37;1;7m- /all content\n\n\033[0m");
+    while(1) { 
+        char *m = (char *)malloc(sizeof(char)*100);
+        fgets(m, sizeof(char)*100, stdin);
+        printf("\n");
+        strtok(m,"\n");
+        if (strcmp(m,haveToStop)==0) {
+            printf("\033[31;1;%dmAdmin disconnection...\n\033[0m",1);
+            pthread_exit(0);
+        }
+        if (isCommand(m)) {
+            adminCommand(m, data);
+        }
+        else { 
+            printf("Command not found\n");
+        }
+    }
+    
+}
+

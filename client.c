@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
 void  INThandler(int sig) { // To manage control c
   char  c;
   signal(sig, SIG_IGN);
-  printf("\nOUCH, did you hit Ctrl-C?\n""Do you really want to quit? [y/n] ");
+  printf("\nOUCH, did you hit Ctrl-C ?\n""Do you really want to quit ? [y/n] ");
   c = getchar();
   if (c == 'y' || c == 'Y') { printf("Disconnection...\n"); exit(0); }    
   else { signal(SIGINT, INThandler); }
