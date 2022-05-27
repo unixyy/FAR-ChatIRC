@@ -51,8 +51,8 @@ int isCommand(char* msg) { // Determines if the message contains a command
 /**
  * @brief Separates the information in a message
  * 
- * @param msg 
- * @return char** 
+ * @param msg The message to check
+ * @return The separated content 
  */
 char** getCommand(char* msg) {
     char * save = (char*)malloc(sizeof(char)*strlen(msg));
@@ -80,7 +80,7 @@ char** getCommand(char* msg) {
  * @param ip Server ip address
  */
 void executeCommand(char* content, sfile* sfiles, char* ip) {
-    char * save = (char*)malloc(sizeof(char)*50);
+    char * save = (char*)malloc(sizeof(char)*100);
     char ** command = getCommand(content);
     char * toCompare = command[0];
     char* name = command[1];
@@ -177,7 +177,7 @@ void file(sfile* sfiles) {
     if (fp == NULL) { perror("[-]Error in reading file"); exit(1);}
  
     send_file(fp, sockfd); // Send the file
-    printf("## File sent ##\n");
+    printf("## File sent ##\n\n");
  
     close(sockfd);
   } 
@@ -196,14 +196,14 @@ void write_file(int sockfd, char* filename) {
   int n;
   FILE *fp;
   char buffer[SIZE];
-  char * path = malloc(50*sizeof(char));
+  char * path = malloc(100*sizeof(char));
   strcat(path,"./");
   strcat(path,filename);
 
   n = recv(sockfd, buffer, SIZE, 0);
   
   if (strlen(buffer)==0) { printf("## This file does not exist ##\n");}
-  else { fp = fopen(filename, "w"); fputs(buffer,fp); bzero(buffer, SIZE); printf("## File received ##\n");}
+  else { fp = fopen(filename, "w"); fputs(buffer,fp); bzero(buffer, SIZE); printf("## File received ##\n\n");}
   
   fclose(fp);
   return;

@@ -43,8 +43,8 @@ int main(int argc, char *argv[]) {
   printf("\033[31;1;%dmConnection...\n\n\033[0m",1);
 
   while (!stop && !datas.stop) {
-    char *m = (char *)malloc(sizeof(char)*30);
-    fgets(m, sizeof(char)*30, stdin); // Message to send
+    char *m = (char *)malloc(sizeof(char)*200);
+    fgets(m, sizeof(char)*200, stdin); // Message to send
     printf("\n");
     strtok(m,"\n");
 

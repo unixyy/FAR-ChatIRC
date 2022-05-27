@@ -15,73 +15,84 @@
 #define SIZE 1024
 #define haveToStop "@quit"
 
-void * receiveSend(data* datas, pthread_mutex_t* mutex) { // Thread for receiving and sending a message
-    int index = actualIndex(datas);
-
+/**
+ * @brief Thread for receiving and sending a message
+ * 
+ * @param datas Information used for server management
+ * @param mutex To avoid modification conflicts
+ */
+void * receiveSend(data* datas, pthread_mutex_t* mutex) { 
+    int index = actualIndex(datas); // Index of the current client in the client array
     int stop = 0;
     int firstmsg = 1;
 
-    int sizeWelcome = 77;
-    if (send(datas->arrayId[index], &sizeWelcome, sizeof(int), 0) == -1) { perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS,2); exit(0); }
-    if (send(datas->arrayId[index], "Welcome! You can chat freely after entering your nickname (/help if needed).", sizeWelcome*sizeof(char), 0) == -1) { perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS,2); exit(0); }
-    
+    personalMessage("Welcome! You can chat freely after entering your nickname (/help if needed).", datas->arrayName[index], datas,index);  // Send a welcome message to the client
+   
     while (!stop) {
         int size;
         int sizeRCV= recv(datas->arrayId[index], &size, sizeof(int), 0); // Receives the size of the message that will follow
-        if (sizeRCV== -1) { perror("Error recv 1 "); shutdown(index, 2); shutdown((*datas).dS, 2); exit(0); }
+        if (sizeRCV== -1) { perror("[-]Error recv"); break; }
         else if (sizeRCV== 0) { break; }
 
         char *msg = (char *)malloc(sizeof(char)*size);
         int msgRCV = recv(datas->arrayId[index], msg, size*sizeof(char), 0); // Receives a message from a client
-        if (msgRCV == -1 ) { perror("Error recv 2 "); break; /*shutdown(index, 2); shutdown((*datas).dS, 2); exit(0);*/ }
+        if (msgRCV == -1 ) { perror("[-]Error recv"); break; }
         else if (msgRCV == 0) { break; }
-        //printf("Message received : %s\n", msg) ;
 
-        if(firstmsg == 1) { // First message sent
-            if (checkPseudo(datas,msg) == 1) { // Nickname already used
-                int sizeMsgUsername = 50;
-                if (send(datas->arrayId[index], &sizeMsgUsername, sizeof(int), 0) == -1) { perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS,2); exit(0); }
-                if (send(datas->arrayId[index], "## Nickname invalid, please choose another one ##", sizeMsgUsername*sizeof(char), 0) == -1) { perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS,2); exit(0); }
-            } else {
+        if(firstmsg == 1) { // First message sent (pseudo of the client)
+            if (checkPseudo(datas,msg) == 1) { // Nickname invalid
+                personalMessage("## Nickname invalid, please choose another one ##", datas->arrayName[index], datas,index); // Send a new nickname request
+            } 
+            else {
                 pthread_mutex_lock(&mutex);
                 strtok(msg,"\n");
                 strcpy(datas->arrayName[index],msg);
                 pthread_mutex_unlock(&mutex);
-                personalMessage("## Nickname registered ##", datas->arrayName[index], datas,index);
+
+                personalMessage("## Nickname registered ##", datas->arrayName[index], datas,index); // Confirm that the nickname is correct
                 firstmsg=0;
             }
         }
-        else if (isCommand(msg)) { // command in the message
+        else if (isCommand(msg)) { // Command in the message
             executeCommand(msg,datas,index);
         }
         else {
             strtok(haveToStop, "\0");
-            if (strcmp(msg, haveToStop) == 0) { // If the message sent is @quit
-                    stop = 1; 
-                    } 
-            else {
-            messageChannel(datas,msg,index);
-            }
+            if (strcmp(msg, haveToStop) == 0) {  stop = 1; } // If the message sent is @quit
+            else { messageChannel(datas,msg,index);} // Send a message in the channel
         }
         free(msg);
   }
-  shutdown(datas->arrayId[index],2); // Close the client
+  shutdown(datas->arrayId[index],2); // Close the connection
+
+  // Manages the deletion of the client
   pthread_mutex_lock(&mutex);
   deleteUser(datas,datas->arrayId[index]);
   datas->threadToClose[index] = pthread_self();
   datas->isClose[index] = 1;
   datas->arrayIdChannel[index] = NULL;
   pthread_mutex_unlock(&mutex);
+
   rk_sema_post(datas->s);
   pthread_exit(0);
 }
 
-void broadcast(data* datas, char* text1,char* text2, int index) { // Broadcast a message to all the clients
-    char *sender = calloc(30, sizeof(char));
+/**
+ * @brief Send a message to all the clients
+ * 
+ * @param datas Information used for server management
+ * @param text1 First part of the message to send
+ * @param text2 Second part of the message to send
+ * @param index Index of the client 
+ */
+void broadcast(data* datas, char* text1,char* text2, int index) { 
+    char *sender = calloc(40, sizeof(char));
     strcpy(sender,idToName(datas->arrayId[index], datas));
     strtok(sender, "\n");
-    int size = 103 + strlen(sender); 
+    int size = 200;
     char* content = (char *)malloc(sizeof(char)*size);
+
+    // Message to send
     strcpy(content,"[ALL] ");
     strcat(content,sender);
     strcat(content, " : ");
@@ -89,67 +100,78 @@ void broadcast(data* datas, char* text1,char* text2, int index) { // Broadcast a
     strcat(content, " ");
     strcat(content, text2);
 
-        for (int i=0;i<20;i++) {
-            if ((datas->arrayId[index] != datas->arrayId[i]) && (datas->arrayId[i] != -1)) { // If the client is different from the one sending
-                if (send(datas->arrayId[i], &size, sizeof(int), 0) == -1) { perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS,2); exit(0); }
-            }
+    // Sending management
+    for (int i=0;i<20;i++) {
+        if ((datas->arrayId[index] != datas->arrayId[i]) && (datas->arrayId[i] != -1)) { // If the client is different from the one sending
+            personalMessage(content, datas->arrayName[index], datas, index);
         }
-        for (int i=0;i<20;i++) {
-            if ((datas->arrayId[index] != datas->arrayId[i]) && (datas->arrayId[i] != -1)) { // If the client is different from the one sending
-                if (send(datas->arrayId[i], content, size*sizeof(char), 0) == -1) {  perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS, 2); exit(0); }
-                    //printf("Message sent\n");
-            }
-        }
+    }
 }
 
-void adminBroadcast(data* datas, char* text1,char* text2) { // Broadcast a message to all the clients
-    int size = 100;
+/**
+ * @brief Sending a message to all clients by an admin
+ * 
+ * @param datas Information used for server management
+ * @param text1 First part of the message to send
+ * @param text2 Second part of the message to send
+ */
+void adminBroadcast(data* datas, char* text1,char* text2) {
+    int size = 200;
     char* content = (char *)malloc(sizeof(char)*size);
+
+    // Message to send
     strcpy(content,"[ALL] admin : ");
     strcat(content, text1);
     strcat(content, " ");
     strcat(content, text2);
 
-        for (int i=0;i<20;i++) {
-            if (datas->arrayId[i] != -1) { // If the client is different from the one sending
-                if (send(datas->arrayId[i], &size, sizeof(int), 0) == -1) { perror("Error send"); shutdown((*datas).dS,2); exit(0); }
-            }
+    // Sending management
+    for (int i=0;i<20;i++) {
+        if (datas->arrayId[i] != -1) { // If the client exists
+            if (send(datas->arrayId[i], &size, sizeof(int), 0) == -1) { perror("[-]Error send"); shutdown((*datas).dS,2); exit(0); }
         }
-        for (int i=0;i<20;i++) {
-            if (datas->arrayId[i] != -1) { // If the client is different from the one sending
-                if (send(datas->arrayId[i], content, size*sizeof(char), 0) == -1) {  perror("Error send"); shutdown((*datas).dS, 2); exit(0); }
-                    //printf("Message sent\n");
-            }
+    }
+    for (int i=0;i<20;i++) {
+        if (datas->arrayId[i] != -1) { // If the client exists
+            if (send(datas->arrayId[i], content, size*sizeof(char), 0) == -1) {  perror("[-]Error send"); shutdown((*datas).dS, 2); exit(0); }
         }
+    }
 }
 
+/**
+ * @brief Send a message in the current channel
+ * 
+ * @param datas Information used for server management
+ * @param msg Message to send
+ * @param index Index of the client 
+ */
 void messageChannel(data* datas, char* msg, int index) { 
-    char *sender = calloc(30, sizeof(char));
-    strcpy(sender,idToName(datas->arrayId[index], datas));
-    strtok(sender, "\n");
-    int size = strlen(msg) + 3 + strlen(sender); 
+    int size = strlen(msg) + 50;
     char* content = (char *)malloc(sizeof(char)*size);
+    int myChannel = datas->arrayIdChannel[index];
+
+    // Message to send
     strcpy(content,"");
-    strcat(content, sender);
+    strcat(content, idToName(datas->arrayId[index], datas));
     strcat(content, " : ");
     strcat(content, msg);
-    strtok(msg, "\n");
-    int myChannel = datas->arrayIdChannel[index];
-        for (int i=0;i<20;i++) {
-            if ((datas->arrayId[index] != datas->arrayId[i]) && (datas->arrayId[i] != -1) && ((datas->arrayIdChannel[i])==myChannel)) { // If the client is different from the one sending
-                if (send(datas->arrayId[i], &size, sizeof(int), 0) == -1) { perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS,2); exit(0); }
-            }
+
+    // Sending management
+    for (int i=0;i<20;i++) {
+        if ((datas->arrayId[index] != datas->arrayId[i]) && (datas->arrayId[i] != -1) && ((datas->arrayIdChannel[i])==myChannel)) { // If the client is different from the one sending
+            personalMessage(content, datas->arrayName[index], datas, index);
         }
-        for (int i=0;i<20;i++) {
-            if ((datas->arrayId[index] != datas->arrayId[i]) && (datas->arrayId[i] != -1) && ((datas->arrayIdChannel[i])==myChannel)) { // If the client is different from the one sending
-                if (send(datas->arrayId[i], content, size*sizeof(char), 0) == -1) {  perror("Error send"); shutdown(datas->arrayId[index], 2); shutdown((*datas).dS, 2); exit(0); }
-                    //printf("Message sent\n");
-            }
-        }
+    }
 }
 
-void * closeThread(data* datas) { // Thread for closing a receiveSend thread
+/**
+ * @brief Thread for closing a receiveSend thread 
+ * 
+ * @param datas Information used for server management
+ */
+void * closeThread(data* datas) {
     while(1) { 
+        sleep(10);
         for (int i=0;i<20;i++) {
             if (datas->isClose[i] != 0) { 
                 pthread_kill(datas->threadToClose[i], SIGTERM); // Closed the requested thread
@@ -160,7 +182,13 @@ void * closeThread(data* datas) { // Thread for closing a receiveSend thread
     pthread_exit(0);
 }
 
-int actualIndex(data* data) { // Returns the index of a cell corresponding to a socket id
+/**
+ * @brief Calculate the index of a cell corresponding to a socket id
+ * 
+ * @param data Information used for server management
+ * @return The index, -1 if not found
+ */
+int actualIndex(data* data) {
     int cpt = 0;
     int stop = 0;
     while (!stop) { 
@@ -170,21 +198,39 @@ int actualIndex(data* data) { // Returns the index of a cell corresponding to a 
     return cpt-1;
 }
 
-int nextEmpty(data* data) { // Returns the index of the first empty cell of an array
+/**
+ * @brief Calculate the index of the first empty cell of the name array 
+ * 
+ * @param data Information used for server management
+ * @return The index, -1 if not found 
+ */
+int nextEmpty(data* data) { 
     for (int i=0;i<20;i++) {
         if (data->arrayId[i] == -1) { return i; }
     }
     return -1;
 }
 
-int nextEmptyChannel(data* data) { // Returns the index of the first empty cell of an array
+/**
+ * @brief Calculate the index of the first empty cell of the channel array
+ * 
+ * @param data Information used for server management
+ * @return The index, -1 if not found 
+ */
+int nextEmptyChannel(data* data) {
     for (int i=0;i<20;i++) {
         if (strcmp(data->arrayChannelName[i],"empty")==0) { return i; }
     }
     return -1;
 }
 
-void deleteUser(data* data, int id) { // Removes a user from the user list
+/**
+ * @brief Removes a client from the client list
+ * 
+ * @param data Information used for server management
+ * @param id The id of the client
+ */
+void deleteUser(data* data, int id) {
     for (int i=0;i<20;i++) {
         if (data->arrayId[i] == id) {
             data->arrayId[i] = -1;
@@ -194,16 +240,28 @@ void deleteUser(data* data, int id) { // Removes a user from the user list
     }
 }
 
-int isCommand(char* msg) { // Determines if the received message contains a command
+/**
+ * @brief Determines if the received message contains a command
+ * 
+ * @param msg The message to check
+ * @return 1 if this is command, O otherwise
+ */
+int isCommand(char* msg) { 
     if ((msg[0] == '/') || (msg[0] == '&')) { return 1; }
     else { return 0; }
 }
 
-char** getCommand(char* msg) { // Separates the information in a message
+/**
+ * @brief Separates the information in a message
+ * 
+ * @param msg The message to check
+ * @return The separated content
+ */
+char** getCommand(char* msg) {
     char * save = (char*)malloc(sizeof(char)*strlen(msg));
     strcpy(save,msg);
     char *datas[3];
-    for (int i=0;i<3;i++) { datas[i]=(char *)malloc(sizeof(char) * 200); }
+    for (int i=0;i<3;i++) { datas[i]=(char *)malloc(sizeof(char) * 200); } // Initialize the returned array
 
     char d[] = " ";
     char *p = strtok(msg, d);
@@ -230,105 +288,95 @@ char** getCommand(char* msg) { // Separates the information in a message
     return datas;
 }
 
+/**
+ * @brief Executes a particular command
+ * 
+ * @param content The message to check
+ * @param data Information used for server management
+ * @param id The id of the client
+ */
 void executeCommand(char* content, data* data, int id) {
     char ** command = getCommand(content);
     char * toCompare = command[0];
     strtok(toCompare,"\0");
     strtok(toCompare,"\n");
-    // for(int i=0;i<3;i++) { printf("%s\n", command[i]); }
-    if (strcmp(toCompare,"/help") == 0) { // Help command
-        char cont[1000] = "";
-        personalMessage(helpMessage(&cont), data->arrayName[id], data,id);
-    } else if (strcmp(toCompare,"/files") == 0) { // Files list of the server
-        char cont[500] = "";
-        personalMessage(listFile(&cont), data->arrayName[id], data,id);
-    } else if (strcmp(toCompare,"/msg") == 0) { // Private message
-        privateMessage(command[2], command[1], data,id);
-    } else if (strcmp(toCompare,"/list") == 0) { // List command
-        char cont[500] = "";
-        personalMessage(listClient(&cont,data), data->arrayName[id], data,id);
-    } else if (strcmp(toCompare,"/listC") == 0) { // List command
-        char cont[500] = "";
-        personalMessage(listClientChannel(&cont,data,id), data->arrayName[id], data,id);
-    } 
-    else if (strcmp(toCompare,"/connect") == 0) {
-        connectChannel(command[1], id, data);
-    }
-    else if (strcmp(toCompare, "/create") == 0)
-    {
-        createChannel(command[1],data);
-    }
-    else if (strcmp(toCompare, "/delete") == 0)
-    {
-        deleteChannel(command[1],data);
-    }
-    else if (strcmp(toCompare, "/all") == 0)
-    {
-        broadcast(data, command[1],command[2], id);
-    }
-    else if (strcmp(toCompare, "/report") == 0)
-    {
-        report(data->arrayName[id],command[1],command[2]);
-    }
-    else if (strcmp(toCompare, "/chann") == 0)
-    {
-        char cont[500] = "";
-        personalMessage(listChannels(&cont,data), data->arrayName[id], data,id);
-    }
-    else
-    {
-        printf("Command not found\n");
-        char cont[500] = "";
-        personalMessage(helpMessage(&cont), data->arrayName[id], data,id);
-    }
+
+    if (strcmp(toCompare,"/help") == 0) { char cont[1000] = ""; personalMessage(helpMessage(&cont), data->arrayName[id], data,id); } // Help command 
+    else if (strcmp(toCompare,"/files") == 0) { char cont[500] = ""; personalMessage(listFile(&cont), data->arrayName[id], data,id); } // Files list of the server 
+    else if (strcmp(toCompare,"/msg") == 0) { privateMessage(command[2], command[1], data,id); } // Private message 
+    else if (strcmp(toCompare,"/list") == 0) { char cont[500] = ""; personalMessage(listClient(&cont,data), data->arrayName[id], data,id); } // List online clients 
+    else if (strcmp(toCompare,"/listC") == 0) { char cont[500] = ""; personalMessage(listClientChannel(&cont,data,id), data->arrayName[id], data,id); } // List online clients in the current channel
+    else if (strcmp(toCompare,"/connect") == 0) { connectChannel(command[1], id, data); } // Connect to a channel
+    else if (strcmp(toCompare, "/create") == 0) { createChannel(command[1],data); } // Create a channel 
+    else if (strcmp(toCompare, "/delete") == 0) { deleteChannel(command[1],data); } // Delete a channel
+    else if (strcmp(toCompare, "/all") == 0) { broadcast(data, command[1],command[2], id); } // Broadcast a message to all channels
+    else if (strcmp(toCompare, "/report") == 0) { report(data->arrayName[id],command[1],command[2]); } // Report a situation to an admin
+    else if (strcmp(toCompare, "/chann") == 0) { char cont[500] = ""; personalMessage(listChannels(&cont,data), data->arrayName[id], data,id); } // List channels
+    else { printf("## Command not found ##\n"); char cont[500] = ""; personalMessage(helpMessage(&cont), data->arrayName[id], data,id); }
+
     free(toCompare);
 }
 
+/**
+ * @brief Executes a particular admin command 
+ * 
+ * @param content The content to check
+ * @param data Information used for server management
+ */
 void adminCommand(char* content, data* data) {
     char ** command = getCommand(content);
     char * toCompare = command[0];
     strtok(toCompare,"\0");
     strtok(toCompare,"\n");
-    if (strcmp(toCompare,"/msg") == 0) { // Private message
-        adminPrivateMessage(command[2], command[1], data);
-    } else if (strcmp(toCompare, "/all") == 0)
-    {
-        adminBroadcast(data, command[1],command[2]);
-    }
-    else if (strcmp(toCompare, "/kick") == 0)
-    {
-        kick(data, command[1]);
-    }
-    else
-    {
-        printf("Command not found\n");
-    }
+
+    if (strcmp(toCompare,"/msg") == 0) { adminPrivateMessage(command[2], command[1], data); } // Private message 
+    else if (strcmp(toCompare, "/all") == 0) { adminBroadcast(data, command[1],command[2]); } // Message to all channels
+    else if (strcmp(toCompare, "/kick") == 0) { kick(data, command[1]); } // Kick a client
+    else { printf("## Command not found ##\n"); }
+    
     free(toCompare);
 }
 
+/**
+ * @brief Report a situation to an admin
+ * 
+ * @param id The id of the client
+ * @param text1 First part of the message
+ * @param text2 Second part of the message
+ */
 void report(char* id, char* text1, char* text2){
     char cont[500] = "";
     strcpy(cont,id);
+
     strcat(cont," : ");
     strcat(cont,text1);
     strcat(cont,text2);
-    printf("%s\n\n",cont);
 
+    printf("%s\n\n",cont);
 }
 
+/**
+ * @brief Kick a client from the server
+ * 
+ * @param data Information used for server management
+ * @param name The name of the client
+ */
 void kick(data* data, char* name) {
     int id = nameToId(name,data);
-    //printf("%d\n",id);
-    if (id!=-1) { 
-        //personalMessage("You have been kicked", data->arrayName[id], data,id);
+    if (id!=-1) { // User exists
         adminPrivateMessage("You have been kicked !", name, data);
         shutdown(data->arrayId[id],2);
         deleteUser(data,id);
     }
 }
 
-
-char* listFile(char* content) { // Print files list of the server
+/**
+ * @brief Print files list of the server
+ * 
+ * @param content Place to put the list
+ * @return The content
+ */
+char* listFile(char* content) {
     struct dirent *dir;
     DIR *d = opendir("./servFile"); 
     if (d) {
@@ -338,25 +386,47 @@ char* listFile(char* content) { // Print files list of the server
     return content;
 }
 
-int nameToId(char* username, data* data) { // Retrieves the username corresponding to an id
+/**
+ * @brief Retrieves the username corresponding to an id
+ * 
+ * @param username The username to transform
+ * @param data Information used for server management
+ * @return The id of the client, -1 if not found
+ */
+int nameToId(char* username, data* data) {
     for (int i=0;i<20;i++) {
         if (strcmp(data->arrayName[i],username) == 0) { return data->arrayId[i]; }
     }
     return -1;
 }
 
-char* idToName(int id, data* data) { // Retrieves the correct id for a username
+/**
+ * @brief Retrieves the correct id for a username
+ * 
+ * @param id The id to transform
+ * @param data Information used for server management
+ * @return The name of the client, "" if not found
+ */
+char* idToName(int id, data* data) { 
     for (int i=0;i<20;i++) {
         int var = data->arrayId[i];
         if (var == id) { return data->arrayName[i]; }
     }
-    return -1;
+    return "";
 }
 
-void privateMessage(char* msg, char* username, data* data, int index) { // Sends a private message to another user
-    char *sender = calloc(30, sizeof(char));
+/**
+ * @brief Sends a private message to another user
+ * 
+ * @param msg The message to send
+ * @param username The username of the sender
+ * @param data Information used for server management
+ * @param index The index of the sender
+ */
+void privateMessage(char* msg, char* username, data* data, int index) { 
+    char *sender = calloc(40, sizeof(char));
     strcpy(sender,idToName(data->arrayId[index], data));
-    int size = strlen(msg) + 16 + strlen(sender);
+    int size = strlen(msg) + 50;
     char* content = (char *)malloc(sizeof(char)*size);
 
     strcpy(content,"Whisper from ");
@@ -367,15 +437,22 @@ void privateMessage(char* msg, char* username, data* data, int index) { // Sends
     int id = nameToId(username, data);
     if (id != -1) { // Correct username
         int size = 200;
-        if (send(id, &size, sizeof(int), 0) == -1) { perror("Error send"); shutdown(id, 2); shutdown(datas.dS,2); exit(0); }
-        if (send(id, content, size*sizeof(char),0) == -1) { perror("Error send"); shutdown(id, 2); shutdown(datas.dS,2); exit(0); }
-    } else { printf("error\n"); }
+        if (send(id, &size, sizeof(int), 0) == -1) { perror("[-]Error send"); shutdown(id, 2); shutdown(datas.dS,2); exit(0); }
+        if (send(id, content, size*sizeof(char),0) == -1) { perror("[-]Error send"); shutdown(id, 2); shutdown(datas.dS,2); exit(0); }
+    } 
 
     free(sender);
     free(content);
 }
 
-void adminPrivateMessage(char* msg, char* username, data* data) { // Sends a private message to another user
+/**
+ * @brief Sends a private message to another user by an admin
+ * 
+ * @param msg The message to send
+ * @param username The username of the receiver
+ * @param data Information used for server management
+ */
+void adminPrivateMessage(char* msg, char* username, data* data) { 
     int size = strlen(msg) + 20;
     char* content = (char *)malloc(sizeof(char)*size);
 
@@ -385,27 +462,43 @@ void adminPrivateMessage(char* msg, char* username, data* data) { // Sends a pri
     int id = nameToId(username, data);
     if (id != -1) { // Correct username
         int size = 200;
-        if (send(id, &size, sizeof(int), 0) == -1) { perror("Error send");shutdown(datas.dS,2); exit(0); }
-        if (send(id, content, size*sizeof(char),0) == -1) { perror("Error send");shutdown(datas.dS,2); exit(0); }
-    } else { printf("error\n"); }
+        if (send(id, &size, sizeof(int), 0) == -1) { perror("[-]Error send");shutdown(datas.dS,2); exit(0); }
+        if (send(id, content, size*sizeof(char),0) == -1) { perror("[-]Error send");shutdown(datas.dS,2); exit(0); }
+    }
+
     free(content);
 }
 
-void personalMessage(char* msg, char* username, data* data, int index) { // Sends a message to the user who executed the command
+/**
+ * @brief // Sends a message to the user who executed the command
+ * 
+ * @param msg The message to send
+ * @param username The username of the sender
+ * @param data Information used for server management
+ * @param index The index of the client
+ */
+void personalMessage(char* msg, char* username, data* data, int index) { 
     int size = strlen(msg);
     char* content = (char *)malloc(sizeof(char)*size);
     strcat(content, msg);
-    int id = nameToId(username, data);
 
+    int id = nameToId(username, data);
     if (id != -1) { // Correct username
         int size = 1000;
-        if (send(id, &size, sizeof(int), 0) == -1) { perror("Error send"); shutdown(id, 2); shutdown(datas.dS,2); exit(0); }
-        if (send(id, content, size*sizeof(char),0) == -1) { perror("Error send"); shutdown(id, 2); shutdown(datas.dS,2); exit(0); }
-    } else { printf("error\n");}
+        if (send(id, &size, sizeof(int), 0) == -1) { perror("[-]Error send"); shutdown(id, 2); shutdown(datas.dS,2); exit(0); }
+        if (send(id, content, size*sizeof(char),0) == -1) { perror("[-]Error send"); shutdown(id, 2); shutdown(datas.dS,2); exit(0); }
+    } 
+
     free(content);
 }
 
-char* helpMessage(char* content) {// Reads the list of available commands in a file
+/**
+ * @brief Reads the list of available commands in a file
+ * 
+ * @param content The place to put the content
+ * @return The list of file
+ */
+char* helpMessage(char* content) {
     FILE *f;
     char c;
     f = fopen("listCommand.txt", "rt");
@@ -415,22 +508,25 @@ char* helpMessage(char* content) {// Reads the list of available commands in a f
     return content;
 }
 
+/**
+ * @brief Read a file an update actual channels
+ * 
+ * @param data Information used for server management
+ */
 void channelList(data* data){
     char* content = malloc(1000*sizeof(char));
+
     FILE *f;
     char c;
     f = fopen("listChannel.txt", "rt");
     int i = 0;
-    while((c=fgetc(f))!=EOF){ 
-        content[i] = c;
-        i++; 
-    } // There are some lines
+    while((c=fgetc(f))!=EOF){ content[i] = c; i++; } // There are some lines
     fclose(f);
 
     char d[] = "\n";
     char *p = strtok(content, d);
     int j = 0;
-    while((p != NULL) && (j<20)) { // Recover the first two parts
+    while((p != NULL) && (j<20)) { // Update channel array
         strcpy(data->arrayChannelName[j],p);
         p = strtok(NULL, d);
         j++;
@@ -438,12 +534,17 @@ void channelList(data* data){
 
 }
 
+/**
+ * @brief Save actual channels in a file
+ * 
+ * @param data Information used for server management
+ */
 void saveChannels(data* data) {
     FILE *f;
     char c;
     f = fopen("listChannel.txt", "w");
     int i = 0;
-    while(i<20){ 
+    while(i<20){ // Array reading not finish
         if (strcmp(data->arrayChannelName[i],"empty")!=0) {
             fwrite(data->arrayChannelName[i], 1, strlen(data->arrayChannelName[i]), f);   
             fwrite("\n", 1, 1, f);   
@@ -453,12 +554,19 @@ void saveChannels(data* data) {
     fclose(f);
 }
 
-char * listClient(char* content, data* data) { // Returns the list of online clients
+/**
+ * @brief Returns the list of online clients
+ * 
+ * @param content The place to put the content
+ * @param data Information used for server management
+ * @return The list
+ */
+char * listClient(char* content, data* data) { 
     int iterator1 = 0;
-    for (int i=0;i<20;i++) {
+    for (int i=0;i<20;i++) { // Each cell
         if (data->arrayId[i] != (int*)-1) {
             int iterator2 = 0;
-            while((data->arrayName[i])[iterator2] != '\0') {
+            while((data->arrayName[i])[iterator2] != '\0') { // Reading of client name
                 content[iterator1] = (data->arrayName[i])[iterator2];
                 iterator1++;
                 iterator2++;
@@ -470,12 +578,20 @@ char * listClient(char* content, data* data) { // Returns the list of online cli
     return content;
 }
 
-char * listClientChannel(char* content, data* data, int id) { // Returns the list of online clients
+/**
+ * @brief // Returns the list of actual channels
+ * 
+ * @param content The place to put the content
+ * @param data Information used for server management
+ * @param id The if of the client
+ * @return The list
+ */
+char * listClientChannel(char* content, data* data, int id) {
     int iterator1 = 0;
-    for (int i=0;i<20;i++) {
+    for (int i=0;i<20;i++) { // Each cell
         if ((data->arrayIdChannel[i] == data->arrayIdChannel[id]) && (strcmp(data->arrayName[i],"empty") != 0)) {
             int iterator2 = 0;
-            while((data->arrayName[i])[iterator2] != '\0') {
+            while((data->arrayName[i])[iterator2] != '\0') { // Reading of channel name
                 content[iterator1] = (data->arrayName[i])[iterator2];
                 iterator1++;
                 iterator2++;
@@ -487,15 +603,17 @@ char * listClientChannel(char* content, data* data, int id) { // Returns the lis
     return content;
 }
 
-int checkPseudo(data* data, char* pseudo) { // See if a username is already in use
-
-    int res = 0;
-
-    res = testRegex("^[a-zA-Z0-9]{5}",pseudo,1);
-    if (res != 1) { 
-        res = testRegex("(admin)",pseudo,1);
-    }
-    if (res != 1) { 
+/**
+ * @brief See if a username is already in use
+ * 
+ * @param data Information used for server management
+ * @param pseudo The nickname to check
+ * @return 1 if the nickname is invalid, 0 otherwise
+ */
+int checkPseudo(data* data, char* pseudo) { 
+    int res = testRegex("^[a-zA-Z0-9]{5}",pseudo,0);
+    if (res != 1) { res = testRegex("(admin)",pseudo,1); }
+    if (res != 1) { // Not already in use
         for (int i=0;i<20;i++) {
             if (strcmp(data->arrayName[i],pseudo) == 0) { res=1; }
         }
@@ -503,15 +621,23 @@ int checkPseudo(data* data, char* pseudo) { // See if a username is already in u
     return res;
 }
 
+/**
+ * @brief See if a content contains a regex
+ * 
+ * @param regex The regex to check
+ * @param content The content to check
+ * @param param To change the result
+ * @return 0 if ok, 1 otherwise
+ */
 int testRegex(char* regex, char* content, int param) {
     regex_t reg;
     int reti = regcomp(&reg, regex, REG_EXTENDED);
     reti = regexec(&reg, content, 0, NULL, 0);
-    if (!reti && param == 1) {
+    if (!reti && param == 1) { // No match
         regfree(&reg);
         return 1;
     }
-    if ((reti == REG_NOMATCH) && param == 0) {
+    if ((reti == REG_NOMATCH) && param == 0) { // Match
         regfree(&reg);
         return 1;
     }
@@ -519,14 +645,27 @@ int testRegex(char* regex, char* content, int param) {
     return 0;
 }
 
-int checkChannel(data* data, char* channel) { // See if a username is already in use
+/**
+ * @brief See if a channel already exists
+ * 
+ * @param data Information used for server management
+ * @param channel The channel name to check
+ * @return 1 if the channel exists, 0 otherwise
+ */
+int checkChannel(data* data, char* channel) { // 
     for (int i=0;i<20;i++) {
         if (strcmp(data->arrayChannelName[i],channel) == 0) { return 1; }
     }
     return 0;
 }
 
-void write_file(int sockfd, char* filename) { // Create a new file
+/**
+ * @brief Create a new file
+ * 
+ * @param sockfd Transmission socket number
+ * @param filename Name of the file
+ */
+void write_file(int sockfd, char* filename) { 
     int n;
     FILE *fp;
     char buffer[SIZE];
@@ -546,9 +685,11 @@ void write_file(int sockfd, char* filename) { // Create a new file
     return;
 }
  
-void file() { // Receiving a file
-    //printf("Receiving file thread : \n");
-
+/**
+ * @brief Receiving a file
+ * 
+ */
+void file() {
     struct stat st = {0};
     if (stat("./servFile", &st) == -1) { mkdir("./servFile", 0700);}
 
@@ -563,7 +704,6 @@ void file() { // Receiving a file
  
     sockfd = socket(AF_INET, SOCK_STREAM, 0); // Create the socket
     if(sockfd < 0) { perror("[-]Error in socket"); exit(1); }
-    //printf("[+]Server socket created successfully.\n");
  
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = port;
@@ -571,10 +711,8 @@ void file() { // Receiving a file
     
     e = bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
     if(e < 0) { perror("[-]Error in bind"); exit(1); }
-    //printf("[+]Binding successfull.\n");
     
-    if(listen(sockfd, 10) == 0) { /*printf("[+]Listening....\n");*/}
-    else { perror("[-]Error in listening"); exit(1); }
+    if(listen(sockfd, 10) != 0) { perror("[-]Error in listening"); exit(1); }
 
     struct rk_sema s;
     rk_sema_init(&s, 1);
@@ -584,22 +722,26 @@ void file() { // Receiving a file
 
         addr_size = sizeof(new_addr);
         new_sock = accept(sockfd, (struct sockaddr*)&new_addr, &addr_size); // Accept a client
-        if (new_sock < 0) { perror("accept failed"); exit(1); }
-	    //puts("Connection accepted");
+        if (new_sock < 0) { perror("[-]Accept failed"); exit(1); }
 
         while (recv(new_sock,buffer,50,0) > 0) {
             strtok(buffer,"\n");
             write_file(new_sock,buffer); // Receive the file
-            //printf("[+]Data written in the file successfully.\n");
         }
 
-    rk_sema_post(&s);
-    close(new_sock);
+        rk_sema_post(&s);
+        close(new_sock);
     }
     pthread_exit(0);
 }
 
-void send_file(FILE *fp, int sockfd) { // Send the file
+/**
+ * @brief Send a file
+ * 
+ * @param fp The file to send
+ * @param sockfd Transmission socket number
+ */
+void send_file(FILE *fp, int sockfd) { 
     int n;
     char data[SIZE] = {0};
     while(fread(data, sizeof(char), SIZE, fp)!= NULL) { // There are some data
@@ -608,9 +750,11 @@ void send_file(FILE *fp, int sockfd) { // Send the file
     }
 }
  
-void downloadFile() { // Sending a file
-    //printf("Sending file thread : \n");
-
+/**
+ * @brief Sending a file
+ * 
+ */
+void downloadFile() { 
     struct stat st = {0};
     if (stat("./servFile", &st) == -1) { mkdir("./servFile", 0700);}
 
@@ -626,7 +770,6 @@ void downloadFile() { // Sending a file
  
     sockfd = socket(AF_INET, SOCK_STREAM, 0); // Create the socket
     if(sockfd < 0) { perror("[-]Error in socket"); exit(1); }
-    //printf("[+]Server socket created successfully.\n");
  
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = port;
@@ -634,10 +777,8 @@ void downloadFile() { // Sending a file
  
     e = bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
     if(e < 0) { perror("[-]Error in bind"); exit(1); }
-    //printf("[+]Binding successfull.\n");
  
-    if(listen(sockfd, 10) == 0) { /*printf("[+]Listening....\n\n\n"); */}
-    else { perror("[-]Error in listening"); exit(1); }
+    if(listen(sockfd, 10) != 0) { perror("[-]Error in listening"); exit(1); }
 
     struct rk_sema s;
     rk_sema_init(&s, 1);
@@ -647,8 +788,7 @@ void downloadFile() { // Sending a file
 
         addr_size = sizeof(new_addr);
         new_sock = accept(sockfd, (struct sockaddr*)&new_addr, &addr_size); // Accept a client
-        if (new_sock < 0) { perror("accept failed"); exit(1); }
-        //puts("Connection accepted");
+        if (new_sock < 0) { perror("[-]Accept failed"); exit(1); }
 
         while (recv(new_sock,buffer,50,0) > 0) {
             char* test = malloc(50*sizeof(char));
@@ -670,52 +810,73 @@ void downloadFile() { // Sending a file
             if (stop) { // Filename exists
                 fp = fopen(test, "r");
                 if (fp == NULL) { perror("[-]Error in reading file."); exit(1);}
-        
                 send_file(fp, new_sock); // Send the file
-                //printf("File send.\n");
             } else {
                 char data[SIZE] = {0};
                 send(new_sock, data, sizeof(data), 0);
-                //printf("This file does not exist.\n");
             }       
+
             free(test);
         }
-    rk_sema_post(&s);
-    close(new_sock);
+        rk_sema_post(&s);
+        close(new_sock);
     }
-  pthread_exit(0);
+    pthread_exit(0);
 }
 
-
+/**
+ * @brief Create a channel
+ * 
+ * @param channel The name of the channel
+ * @param data Information used for server management
+ */
 void createChannel(char* channel, data* data){
     int id = nextEmptyChannel(data);
     if (id != -1) { 
-        if (checkChannel(data, channel) == 0) {
+        if (checkChannel(data, channel) == 0) { // Channel does not exist
             strcpy(datas.arrayChannelName[id],channel);
         }
     }   
 }
 
+/**
+ * @brief Delete a channel
+ * 
+ * @param channel The name of the channel
+ * @param data Information used for server management
+ */
 void deleteChannel(char* channel, data* data){
     for (int i=0; i<20; i++) {
         if ((strcmp(data->arrayChannelName[i],channel) == 0) && (strcmp(channel,"public") != 0)) { 
             for (int j=0; j<20; j++) {
-                if (data->arrayIdChannel[j]==i) {
-                    data->arrayIdChannel[j] = 0;
-                }
+                if (data->arrayIdChannel[j]==i) { data->arrayIdChannel[j] = 0; }
             }
             strcpy(data->arrayChannelName[i],"empty");
         }
     }
 }
 
-int nameToIdChannel(char* channel, data* data) { // Retrieves the username corresponding to an id
+/**
+ * @brief Retrieves the username corresponding to an id
+ * 
+ * @param channel The name of the channel
+ * @param data Information used for server management
+ * @return The id of the channel, 0 if not found
+ */
+int nameToIdChannel(char* channel, data* data) {
     for (int i=0;i<20;i++) {
         if (strcmp(data->arrayChannelName[i],channel) == 0) { return i; }
     }
     return -1;
 }
 
+/**
+ * @brief Connect to a channel
+ * 
+ * @param channel The name of the channel
+ * @param index The index of the client
+ * @param data Information used for server management
+ */
 void connectChannel(char* channel, int index, data* data){
     if (checkChannel(data, channel) == 1) {
         strtok(channel,"\n");
@@ -723,12 +884,19 @@ void connectChannel(char* channel, int index, data* data){
     }
 }
 
+/**
+ * @brief Returns the list of channels
+ * 
+ * @param content The place to put the content
+ * @param data Information used for server management
+ * @return The list
+ */
 char* listChannels(char* content, data* data){
     int iterator1 = 0;
-    for (int i=0;i<20;i++) {
+    for (int i=0;i<20;i++) { // Each cell
         if (strcmp(data->arrayChannelName[i],"empty")!=0) {
             int iterator2 = 0;
-            while((data->arrayChannelName[i])[iterator2] != '\0') {
+            while((data->arrayChannelName[i])[iterator2] != '\0') { // Reading of channel name
                 content[iterator1] = (data->arrayChannelName[i])[iterator2];
                 iterator1++;
                 iterator2++;
@@ -740,25 +908,31 @@ char* listChannels(char* content, data* data){
     return content;
 }
 
+/**
+ * @brief Admin session
+ * 
+ * @param data Information used for server management
+ */
 void admin(data* data) {
+    // Informative display
     printf("\033[31;1;1mAdmin connection...\n\n\033[0m");
-
     printf("\033[37;1;7mIf you want to shut down the server you must write @quit and press Ctrl-C !\n\n\033[0m");
-
     printf("\033[37;1;7mCommand list :\n\033[0m");
     printf("\033[37;1;7m- /kick user\n\033[0m");
     printf("\033[37;1;7m- /msg user content\n\033[0m");
     printf("\033[37;1;7m- /all content\n\n\033[0m");
+
     while(1) { 
         char *m = (char *)malloc(sizeof(char)*100);
         fgets(m, sizeof(char)*100, stdin);
         printf("\n");
+
         strtok(m,"\n");
-        if (strcmp(m,haveToStop)==0) {
+        if (strcmp(m,haveToStop)==0) { // Quit the admin session
             printf("\033[31;1;%dmAdmin disconnection...\n\033[0m",1);
             pthread_exit(0);
         }
-        if (isCommand(m)) {
+        else if (isCommand(m)) { // Special command
             adminCommand(m, data);
         }
         else { 
@@ -767,4 +941,3 @@ void admin(data* data) {
     }
     
 }
-

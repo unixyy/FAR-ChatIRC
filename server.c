@@ -13,29 +13,34 @@
 
 pthread_t thread[NB_THREADS];
 
-void  INThandler(int sig); // To manage control c
+void  INThandler(int sig); // Takes care of signal management
 
+/**
+ * @brief Manages socket creation and client connection
+ * 
+ * @param argc The number of arguments
+ * @param argv An available port number
+ * @return A default 0
+ */
 int main(int argc, char *argv[]) {
 
   signal(SIGINT, INThandler);
   
   int dS = socket(PF_INET, SOCK_STREAM, 0); // Create a socket
-  if (dS == -1) { perror("Socket error"); exit(0); }
-  //printf("Socket created\n");
+  if (dS == -1) { perror("[-]Socket error"); exit(0); }
 
   struct sockaddr_in ad;
   ad.sin_family = AF_INET;
   ad.sin_addr.s_addr = INADDR_ANY;
   ad.sin_port = htons(atoi(argv[1])); // Setup the server port with the number passed in parameter
 
-  if (bind(dS, (struct sockaddr*)&ad, sizeof(ad)) == -1){ perror("Error bind"); exit(0); } // Name the socket
-  //printf("Socket named\n");
+  if (bind(dS, (struct sockaddr*)&ad, sizeof(ad)) == -1){ perror("[-]Error bind"); exit(0); } // Name the socket
 
   listen(dS, 7); // Setup the socket in listening mode
-  //printf("Listening mode\n");
 
   struct rk_sema s;
 
+  // Setting up the basic elements for customer management
   datas.dS = dS;
   datas.actualId = 0;
   datas.s = &s;
@@ -48,11 +53,10 @@ int main(int argc, char *argv[]) {
       strcpy(datas.arrayName[i],"empty");
       strcpy(datas.arrayChannelName[i],"empty");
   }
-  channelList(&datas);
-  //strcpy(datas.arrayChannelName[0],"public");
+  channelList(&datas); // Recreate the channels stored in a file
 
   socklen_t lg = sizeof(struct sockaddr_in);
-
+  
   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
   rk_sema_init(datas.s, 20);
@@ -64,13 +68,14 @@ int main(int argc, char *argv[]) {
   pthread_create(&threadRFile, NULL, (void*)downloadFile, NULL); // Creates a thread that manages the sending of files
 
   pthread_t threadAdmin;
-  pthread_create(&threadAdmin, NULL, (void*)admin, &datas);
+  pthread_create(&threadAdmin, NULL, (void*)admin, &datas); // Creates a thread that manages the administrator session
 
-    printf("\033[34;1;1mSTART OF THE SERVER\n\033[0m");
+  pthread_create(&thread[20], NULL, closeThread, &datas); // Creates a thread that manages the closing of receiveSend threads
+
+  printf("\033[34;1;1mSTART OF THE SERVER\n\033[0m");
 
   while (1) {
     rk_sema_wait(datas.s);
-
     int next = nextEmpty(&datas);
       
     int idClient = accept(dS, (struct sockaddr*) &aC,&lg) ; // Accept a client
@@ -79,28 +84,23 @@ int main(int argc, char *argv[]) {
     pthread_mutex_lock(&mutex);
     datas.arrayId[next] = idClient;
     datas.actualId = idClient;
-    //printf("Connected client\n");
-      
     pthread_create(&thread[next], NULL, receiveSend, &datas); // Creates a thread that manages the relaying of messages
-    pthread_create(&thread[20], NULL, closeThread, &datas); // Creates a thread that manages the closing of receiveSend threads
-
     pthread_mutex_unlock(&mutex);
   }
-
   return 0;
 }
 
-
-void  INThandler(int sig) { // To manage control c
+/**
+ * @brief Takes care of signal management
+ * 
+ * @param sig Signal to be processed
+ */
+void  INThandler(int sig) {
   char  c;
   signal(sig, SIG_IGN);
-    printf("\033[34;1;1m\nOUCH, did you hit Ctrl-C ?\n""Do you really want to quit ? [y/n] \033[0m");
+  printf("\033[34;1;1m\nOUCH, did you hit Ctrl-C ?\n""Do you really want to quit ? [y/n] \033[0m");
   c = getchar();
-  if (c == 'y' || c == 'Y') {
-    saveChannels(&datas);
-    shutdown(datas.dS, 2);
-    printf("\033[34;1;1m\nEND OF PROGRAM\n\033[0m");
-    exit(0);
-  } else { signal(SIGINT, INThandler); }
+  if (c == 'y' || c == 'Y') { saveChannels(&datas); shutdown(datas.dS, 2); printf("\033[34;1;1m\nEND OF PROGRAM\n\033[0m"); exit(0);} 
+  else { signal(SIGINT, INThandler); }
   getchar(); // Get new line character
 }
