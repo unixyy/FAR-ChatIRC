@@ -13,11 +13,11 @@ It is composed of a multitude of sprint aiming at progressively improving the nu
 - <em><strong>make main</em></strong>
 
 #### Start the server : 
-- <em><strong>cd server/em></strong>
+- <em><strong>cd server</em></strong>
 - <em><strong>./server NUMPORT/em></strong>
 
 #### Start a client : 
-- <em><strong>cd client/em></strong>
+- <em><strong>cd client</em></strong>
 - <em><strong>./client IPSERVER NUMPORT</em></strong>
 
 ***
