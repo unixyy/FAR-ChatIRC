@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include "funcCli.h"
+#include "threadCli.h"
 
 #define haveToStop "@quit"
 
