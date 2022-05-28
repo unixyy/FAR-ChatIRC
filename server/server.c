@@ -10,7 +10,7 @@
 #include "funcServ.h"
 #include "threadServ.h"
 
-#define NB_THREADS 21
+#define NB_THREADS 24
 
 pthread_t thread[NB_THREADS];
 
@@ -47,6 +47,7 @@ int main(int argc, char *argv[]) {
   datas.actualId = 0;
   datas.s = &s;
   datas.mutex = mutex;
+  datas.close = 0;
   for (int i = 0; i < 20; i++) {
       datas.arrayName[i] = calloc(40,sizeof(char));
       datas.arrayChannelName[i] = calloc(40,sizeof(char));
@@ -64,15 +65,9 @@ int main(int argc, char *argv[]) {
 
   printf("\033[34;1;1mSTART OF THE SERVER\n\033[0m");
 
-  pthread_t threadFile;
-  pthread_create(&threadFile, NULL, (void*)file, NULL); // Creates a thread that manages the reciving of files
-
-  pthread_t threadRFile;
-  pthread_create(&threadRFile, NULL, (void*)downloadFile, NULL); // Creates a thread that manages the sending of files
-
-  pthread_t threadAdmin;
-  pthread_create(&threadAdmin, NULL, (void*)admin, &datas); // Creates a thread that manages the administrator session
-
+  pthread_create(&thread[23], NULL, (void*)file, &datas); // Creates a thread that manages the reciving of files
+  pthread_create(&thread[22], NULL, (void*)downloadFile, &datas); // Creates a thread that manages the sending of files
+  pthread_create(&thread[21], NULL, (void*)admin, &datas); // Creates a thread that manages the administrator session
   pthread_create(&thread[20], NULL, (void*)closeThread, &datas); // Creates a thread that manages the closing of receiveSend threads
 
   while (1) {
@@ -101,7 +96,7 @@ void  INThandler(int sig) {
   signal(sig, SIG_IGN);
   printf("\033[34;1;1m\nOUCH, did you hit Ctrl-C ?\n""Do you really want to quit ? [y/n] \033[0m");
   c = getchar();
-  if (c == 'y' || c == 'Y') { saveChannels(&datas); shutdown(datas.dS, 2); printf("\033[34;1;1m\nEND OF PROGRAM\n\033[0m"); exit(0);} 
+  if (c == 'y' || c == 'Y') { datas.close = 1; pthread_join(thread[20],NULL); saveChannels(&datas); shutdown(datas.dS, 2); printf("\033[34;1;1m\nEND OF PROGRAM\n\033[0m"); exit(0);} 
   else { signal(SIGINT, INThandler); }
   getchar(); // Get new line character
 }

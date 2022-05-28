@@ -19,7 +19,7 @@
  */
 void * Receive(data* datas) {
   int start = 1;
-  while (1) {
+  while (!datas->stop) {
     int size;
     int sizeRCV = recv(datas->dS, &size, sizeof(int), 0); // Receives the size of the message that will follow
     if (sizeRCV == -1) { perror("[-]Error recv"); shutdown(datas->dS, 2); exit(0);}
@@ -34,7 +34,6 @@ void * Receive(data* datas) {
     else { printf("%s\n\n", msg); printf("\n");}
     free(msg);
   }
-  datas->stop = 1;
   pthread_exit(0);
 }
 

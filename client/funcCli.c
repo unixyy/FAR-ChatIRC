@@ -70,12 +70,14 @@ void executeCommand(char* content, sfile* sfiles, char* ip) {
       sfiles->ip = ip;
       sfiles->filename = name;
       pthread_create(&threadFile, NULL, (void*)file, sfiles); // Creates a thread that manages the sending of a file
+      pthread_join(threadFile,NULL);
     }
     else if (strcmp(toCompare,"&dl") == 0) { // Download a file from the server
       pthread_t threadRFile;
       sfiles->ip = ip;
       sfiles->filename = name;
       pthread_create(&threadRFile, NULL, (void*)downloadFile, sfiles); // Creates a thread that manages the reciving of a file
+      pthread_join(threadRFile,NULL);
     }
     free(toCompare);
     free(save);

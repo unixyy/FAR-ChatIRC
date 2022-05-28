@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
   int stop = 0;
   printf("\033[31;1;%dmConnection...\n\n\033[0m",1);
 
-  while (!stop && !datas.stop) {
+  while (!stop) {
     char *m = (char *)malloc(sizeof(char)*200);
     fgets(m, sizeof(char)*200, stdin); // Message to send
     printf("\n");
@@ -56,12 +56,12 @@ int main(int argc, char *argv[]) {
       if (send(datas.dS, m, strlen(m) , 0) == -1) { perror("[-]Error send"); shutdown(datas.dS,2); exit(0); } // Sends the message to the server
 
       strtok(haveToStop,"\0");
-      if (strcmp(m, haveToStop) == 0) { stop=1; } 
+      if (strcmp(m, haveToStop) == 0) { stop=1; datas.stop = 1;} 
       free(m);
     }
   }
   printf("\033[31;1;1mDisconnection...\n\033[0m");
-  pthread_kill(my_thread, SIGTERM); // Kill the receive thread
+  pthread_join(my_thread, NULL);
   return 0;
 }
 
@@ -75,7 +75,7 @@ void  INThandler(int sig) {
   signal(sig, SIG_IGN);
   printf("\033[34;1;1m\nOUCH, did you hit Ctrl-C ?\n""Do you really want to quit ? [y/n] \033[0m");
   c = getchar();
-  if (c == 'y' || c == 'Y') { printf("\033[31;1;1mDisconnection...\n\033[0m"); exit(0); }    
+  if (c == 'y' || c == 'Y') { printf("\033[31;1;1mDisconnection...\n\033[0m"); pthread_join(my_thread, NULL); exit(0); }    
   else { signal(SIGINT, INThandler); }
   getchar(); // Get new line character
 }

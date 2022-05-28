@@ -73,7 +73,6 @@ void * receiveSend(data* datas) {
   datas->arrayIdChannel[index] = NULL;
   pthread_mutex_unlock(&datas->mutex);
 
-  rk_sema_post(datas->s);
   pthread_exit(0);
 }
 
@@ -83,13 +82,19 @@ void * receiveSend(data* datas) {
  * @param datas Information used for server management
  */
 void * closeThread(data* datas) {
-    while(1) { 
+    while(!datas->close) { 
         sleep(10);
         for (int i=0;i<20;i++) {
             if (datas->isClose[i] != 0) { 
-                pthread_kill(*datas->threadToClose[i], SIGTERM); // Closed the requested thread
+                pthread_join(*datas->threadToClose[i], NULL); // Closed the requested thread
                 datas->isClose[i] = 0;
+                rk_sema_post(datas->s);
             }
+        }
+    }
+    for (int j=0;j<24;j++) {
+        if ((j!=20) && (datas->threadToClose[j]!=NULL)) {
+            pthread_join(*datas->threadToClose[j], NULL); // Closed the requested thread
         }
     }
     pthread_exit(0);
@@ -99,7 +104,7 @@ void * closeThread(data* datas) {
  * @brief Receiving a file
  * 
  */
-void file() {
+void file(data* datas) {
     struct stat st = {0};
     if (stat("./servFile", &st) == -1) { mkdir("./servFile", 0700);}
 
@@ -127,7 +132,7 @@ void file() {
     struct rk_sema s;
     rk_sema_init(&s, 1);
 
-    while (1) {
+    while (!datas->close) {
         rk_sema_wait(&s);
 
         addr_size = sizeof(new_addr);
@@ -142,6 +147,7 @@ void file() {
         rk_sema_post(&s);
         close(new_sock);
     }
+    datas->threadToClose[23] = (void*)pthread_self();
     pthread_exit(0);
 }
 
@@ -149,7 +155,7 @@ void file() {
  * @brief Sending a file
  * 
  */
-void downloadFile() { 
+void downloadFile(data* datas) { 
     struct stat st = {0};
     if (stat("./servFile", &st) == -1) { mkdir("./servFile", 0700);}
 
@@ -178,7 +184,7 @@ void downloadFile() {
     struct rk_sema s;
     rk_sema_init(&s, 1);
 
-    while (1) {
+    while (!datas->close) {
         rk_sema_wait(&s);    
 
         addr_size = sizeof(new_addr);
@@ -216,6 +222,7 @@ void downloadFile() {
         rk_sema_post(&s);
         close(new_sock);
     }
+    datas->threadToClose[22] = (void*)pthread_self();
     pthread_exit(0);
 }
 
@@ -233,22 +240,16 @@ void admin(data* data) {
     printf("\033[37;1;7m- /msg user content\n\033[0m");
     printf("\033[37;1;7m- /all content\n\n\033[0m");
 
-    while(1) { 
+    while(!data->close) { 
         char *m = (char *)malloc(sizeof(char)*100);
         fgets(m, sizeof(char)*100, stdin);
         printf("\n");
-
         strtok(m,"\n");
-        if (strcmp(m,haveToStop)==0) { // Quit the admin session
-            printf("\033[31;1;%dmAdmin disconnection...\n\033[0m",1);
-            pthread_exit(0);
-        }
-        else if (isCommand(m)) { // Special command
-            adminCommand(m, data);
-        }
-        else { 
-            printf("Command not found\n");
-        }
+        
+        if (strcmp(m,haveToStop)==0) { printf("\033[31;1;%dmAdmin disconnection...\n\033[0m",1); break; } // Quit the admin session
+        else if (isCommand(m)) { adminCommand(m, data); } // Special command
+        else { printf("## Command not found ##\n\n"); }
     }
-    
+    data->threadToClose[21] = (void*)pthread_self();
+    pthread_exit(0);
 }

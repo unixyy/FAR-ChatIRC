@@ -51,9 +51,10 @@ struct data {
     char* arrayChannelName[20];
     int actualId;
     struct rk_sema* s;
-    pthread_t* threadToClose[20];
-    int* isClose[20];
+    pthread_t* threadToClose[24];
+    int* isClose[24];
     pthread_mutex_t mutex;
+    int close;
 } datas;
 typedef struct data data;
 
