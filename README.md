@@ -1,6 +1,6 @@
 
-# ////////////////////////////////
-# ///////// FAR-ChatIRC //////////
+Name : FAR-ChatIRC 
+
 # ////////////////////////////////
 
 This project aims to create a messaging application entirely in C. 
