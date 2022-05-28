@@ -1,24 +1,25 @@
 
-Name : FAR-ChatIRC 
+### FAR-ChatIRC 
 
-# ////////////////////////////////
+***
 
-This project aims to create a messaging application entirely in C. 
-It takes place within the framework of the IG3 FAR course at Polytech Montpellier.
-It is composed of a multitude of sprint aiming at progressively improving the number and quality of the functionalities.
+<em>This project aims to create a messaging application entirely in C. 
+It takes place within the framework of the <strong>IG3 FAR course at Polytech Montpellier</strong>.
+It is composed of a multitude of sprint aiming at progressively improving the number and quality of the functionalities.</em>
 
-# ////////////////////////////////
+***
 
-Compilation : make main
+#### Compilation : 
+- <em><strong>make main</em></strong>
 
-Start the server : 
-- cd server
-- ./server NUMPORT
+#### Start the server : 
+- <em><strong>cd server/em></strong>
+- <em><strong>./server NUMPORT/em></strong>
 
-Start a client : 
-- cd client
-- ./client IPSERVER NUMPORT
+#### Start a client : 
+- <em><strong>cd client/em></strong>
+- <em><strong>./client IPSERVER NUMPORT</em></strong>
 
-# ////////////////////////////////
+***
 
-Created by Jason, Richard and Thomas.
+### Created by Jason, Richard and Thomas, all rights reserved.

@@ -289,6 +289,14 @@ void kick(data* data, char* name) {
         printf("## Client kicked ##\n\n");
         shutdown((int)(size_t)data->arrayId[id],2);
         deleteUser(data,id);
+
+        // TO DO :
+        /*pthread_mutex_lock(&datas->mutex);
+        deleteUser(datas,id);
+        datas->threadToClose[index] = (void*)pthread_self();
+        datas->isClose[index] = (int*)(size_t)1;
+        datas->arrayIdChannel[index] = NULL;
+        pthread_mutex_unlock(&datas->mutex);*/
     }
 }
 
