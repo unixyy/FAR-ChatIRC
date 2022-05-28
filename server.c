@@ -39,11 +39,13 @@ int main(int argc, char *argv[]) {
   listen(dS, 7); // Setup the socket in listening mode
 
   struct rk_sema s;
+  pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
   // Setting up the basic elements for customer management
   datas.dS = dS;
   datas.actualId = 0;
   datas.s = &s;
+  datas.mutex = mutex;
   for (int i = 0; i < 20; i++) {
       datas.arrayName[i] = calloc(40,sizeof(char));
       datas.arrayChannelName[i] = calloc(40,sizeof(char));
@@ -56,10 +58,10 @@ int main(int argc, char *argv[]) {
   channelList(&datas); // Recreate the channels stored in a file
 
   socklen_t lg = sizeof(struct sockaddr_in);
-  
-  pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
   rk_sema_init(datas.s, 20);
+
+  printf("\033[34;1;1mSTART OF THE SERVER\n\033[0m");
 
   pthread_t threadFile;
   pthread_create(&threadFile, NULL, (void*)file, NULL); // Creates a thread that manages the reciving of files
@@ -70,9 +72,7 @@ int main(int argc, char *argv[]) {
   pthread_t threadAdmin;
   pthread_create(&threadAdmin, NULL, (void*)admin, &datas); // Creates a thread that manages the administrator session
 
-  pthread_create(&thread[20], NULL, closeThread, &datas); // Creates a thread that manages the closing of receiveSend threads
-
-  printf("\033[34;1;1mSTART OF THE SERVER\n\033[0m");
+  pthread_create(&thread[20], NULL, (void*)closeThread, &datas); // Creates a thread that manages the closing of receiveSend threads
 
   while (1) {
     rk_sema_wait(datas.s);
@@ -81,11 +81,11 @@ int main(int argc, char *argv[]) {
     int idClient = accept(dS, (struct sockaddr*) &aC,&lg) ; // Accept a client
     if (idClient== -1) { perror("Error accept"); shutdown(dS, 2); exit(0);}
       
-    pthread_mutex_lock(&mutex);
-    datas.arrayId[next] = idClient;
+    pthread_mutex_lock(&datas.mutex);
+    datas.arrayId[next] = (int*)(size_t)idClient;
     datas.actualId = idClient;
-    pthread_create(&thread[next], NULL, receiveSend, &datas); // Creates a thread that manages the relaying of messages
-    pthread_mutex_unlock(&mutex);
+    pthread_create(&thread[next], NULL, (void*)receiveSend, &datas); // Creates a thread that manages the relaying of messages
+    pthread_mutex_unlock(&datas.mutex);
   }
   return 0;
 }

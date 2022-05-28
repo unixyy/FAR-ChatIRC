@@ -53,6 +53,7 @@ struct data {
     struct rk_sema* s;
     pthread_t* threadToClose[20];
     int* isClose[20];
+    pthread_mutex_t mutex;
 } datas;
 typedef struct data data;
 
@@ -78,7 +79,7 @@ int nameToId(char* username, data* data); // Retrieves the username correspondin
 
 char* idToName(int id, data* data); // Retrieves the correct id for a username
 
-void * receiveSend(data* datas, pthread_mutex_t* mutex); // Thread for receiving and sending a message
+void * receiveSend(data* datas); // Thread for receiving and sending a message
 
 int nextEmpty(data* data); // Calculate the index of the first empty cell of the name array 
 
@@ -102,9 +103,9 @@ void send_file(FILE *fp, int sockfd); // Send the file
 
 void downloadFile(); // Sending a file
 
-void createChannel(char* channel, data* data); // Create a channel
+void createChannel(char* channel, data* data, int index); // Create a channel
 
-void deleteChannel(char* channel, data* data); // Delete a channel
+void deleteChannel(char* channel, data* data, int index); // Delete a channel
 
 void connectChannel(char* channel,int index, data* data); // Connect to a channel
 

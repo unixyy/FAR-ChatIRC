@@ -19,9 +19,8 @@
  * @brief Thread for receiving and sending a message
  * 
  * @param datas Information used for server management
- * @param mutex To avoid modification conflicts
  */
-void * receiveSend(data* datas, pthread_mutex_t* mutex) { 
+void * receiveSend(data* datas) { 
     int index = actualIndex(datas); // Index of the current client in the client array
     int stop = 0;
     int firstmsg = 1;
@@ -30,12 +29,12 @@ void * receiveSend(data* datas, pthread_mutex_t* mutex) {
    
     while (!stop) {
         int size;
-        int sizeRCV= recv(datas->arrayId[index], &size, sizeof(int), 0); // Receives the size of the message that will follow
+        int sizeRCV= recv((int)(size_t)datas->arrayId[index], &size, sizeof(int), 0); // Receives the size of the message that will follow
         if (sizeRCV== -1) { perror("[-]Error recv"); break; }
         else if (sizeRCV== 0) { break; }
 
         char *msg = (char *)malloc(sizeof(char)*size);
-        int msgRCV = recv(datas->arrayId[index], msg, size*sizeof(char), 0); // Receives a message from a client
+        int msgRCV = recv((int)(size_t)datas->arrayId[index], msg, size*sizeof(char), 0); // Receives a message from a client
         if (msgRCV == -1 ) { perror("[-]Error recv"); break; }
         else if (msgRCV == 0) { break; }
 
@@ -44,10 +43,10 @@ void * receiveSend(data* datas, pthread_mutex_t* mutex) {
                 personalMessage("## Nickname invalid, please choose another one ##", datas->arrayName[index], datas,index); // Send a new nickname request
             } 
             else {
-                pthread_mutex_lock(&mutex);
+                pthread_mutex_lock(&datas->mutex);
                 strtok(msg,"\n");
                 strcpy(datas->arrayName[index],msg);
-                pthread_mutex_unlock(&mutex);
+                pthread_mutex_unlock(&datas->mutex);
 
                 personalMessage("## Nickname registered ##", datas->arrayName[index], datas,index); // Confirm that the nickname is correct
                 firstmsg=0;
@@ -63,15 +62,15 @@ void * receiveSend(data* datas, pthread_mutex_t* mutex) {
         }
         free(msg);
   }
-  shutdown(datas->arrayId[index],2); // Close the connection
+  shutdown((int)(size_t)datas->arrayId[index],2); // Close the connection
 
   // Manages the deletion of the client
-  pthread_mutex_lock(&mutex);
-  deleteUser(datas,datas->arrayId[index]);
-  datas->threadToClose[index] = pthread_self();
-  datas->isClose[index] = 1;
+  pthread_mutex_lock(&datas->mutex);
+  deleteUser(datas,(int)(size_t)datas->arrayId[index]);
+  datas->threadToClose[index] = (void*)pthread_self();
+  datas->isClose[index] = (int*)(size_t)1;
   datas->arrayIdChannel[index] = NULL;
-  pthread_mutex_unlock(&mutex);
+  pthread_mutex_unlock(&datas->mutex);
 
   rk_sema_post(datas->s);
   pthread_exit(0);
@@ -87,7 +86,7 @@ void * receiveSend(data* datas, pthread_mutex_t* mutex) {
  */
 void broadcast(data* datas, char* text1,char* text2, int index) { 
     char *sender = calloc(40, sizeof(char));
-    strcpy(sender,idToName(datas->arrayId[index], datas));
+    strcpy(sender,idToName((int)(size_t)datas->arrayId[index], datas));
     strtok(sender, "\n");
     int size = 200;
     char* content = (char *)malloc(sizeof(char)*size);
@@ -102,7 +101,7 @@ void broadcast(data* datas, char* text1,char* text2, int index) {
 
     // Sending management
     for (int i=0;i<20;i++) {
-        if ((datas->arrayId[index] != datas->arrayId[i]) && (datas->arrayId[i] != -1)) { // If the client is different from the one sending
+        if ((datas->arrayId[index] != datas->arrayId[i]) && ((int)(size_t)datas->arrayId[i] != -1)) { // If the client is different from the one sending
             personalMessage(content, datas->arrayName[index], datas, index);
         }
     }
@@ -127,13 +126,13 @@ void adminBroadcast(data* datas, char* text1,char* text2) {
 
     // Sending management
     for (int i=0;i<20;i++) {
-        if (datas->arrayId[i] != -1) { // If the client exists
-            if (send(datas->arrayId[i], &size, sizeof(int), 0) == -1) { perror("[-]Error send"); shutdown((*datas).dS,2); exit(0); }
+        if ((int)(size_t)datas->arrayId[i] != -1) { // If the client exists
+            if (send((int)(size_t)datas->arrayId[i], &size, sizeof(int), 0) == -1) { perror("[-]Error send"); shutdown((*datas).dS,2); exit(0); }
         }
     }
     for (int i=0;i<20;i++) {
-        if (datas->arrayId[i] != -1) { // If the client exists
-            if (send(datas->arrayId[i], content, size*sizeof(char), 0) == -1) {  perror("[-]Error send"); shutdown((*datas).dS, 2); exit(0); }
+        if ((int)(size_t)datas->arrayId[i] != -1) { // If the client exists
+            if (send((int)(size_t)datas->arrayId[i], content, size*sizeof(char), 0) == -1) {  perror("[-]Error send"); shutdown((*datas).dS, 2); exit(0); }
         }
     }
 }
@@ -148,17 +147,17 @@ void adminBroadcast(data* datas, char* text1,char* text2) {
 void messageChannel(data* datas, char* msg, int index) { 
     int size = strlen(msg) + 50;
     char* content = (char *)malloc(sizeof(char)*size);
-    int myChannel = datas->arrayIdChannel[index];
+    int myChannel = (int)(size_t)datas->arrayIdChannel[index];
 
     // Message to send
     strcpy(content,"");
-    strcat(content, idToName(datas->arrayId[index], datas));
+    strcat(content, idToName((int)(size_t)datas->arrayId[index], datas));
     strcat(content, " : ");
     strcat(content, msg);
 
     // Sending management
     for (int i=0;i<20;i++) {
-        if ((datas->arrayId[index] != datas->arrayId[i]) && (datas->arrayId[i] != -1) && ((datas->arrayIdChannel[i])==myChannel)) { // If the client is different from the one sending
+        if ((datas->arrayId[index] != datas->arrayId[i]) && ((int)(size_t)datas->arrayId[i] != -1) && ((int)(size_t)(datas->arrayIdChannel[i])==myChannel)) { // If the client is different from the one sending
             personalMessage(content, datas->arrayName[index], datas, index);
         }
     }
@@ -174,7 +173,7 @@ void * closeThread(data* datas) {
         sleep(10);
         for (int i=0;i<20;i++) {
             if (datas->isClose[i] != 0) { 
-                pthread_kill(datas->threadToClose[i], SIGTERM); // Closed the requested thread
+                pthread_kill(*datas->threadToClose[i], SIGTERM); // Closed the requested thread
                 datas->isClose[i] = 0;
             }
         }
@@ -192,7 +191,7 @@ int actualIndex(data* data) {
     int cpt = 0;
     int stop = 0;
     while (!stop) { 
-        if (data->arrayId[cpt] == data->actualId) { stop = 1; }
+        if ((int)(size_t)data->arrayId[cpt] == data->actualId) { stop = 1; }
         cpt++;
     }
     return cpt-1;
@@ -206,7 +205,7 @@ int actualIndex(data* data) {
  */
 int nextEmpty(data* data) { 
     for (int i=0;i<20;i++) {
-        if (data->arrayId[i] == -1) { return i; }
+        if (data->arrayId[i] == (int*)(size_t)-1) { return i; }
     }
     return -1;
 }
@@ -232,8 +231,8 @@ int nextEmptyChannel(data* data) {
  */
 void deleteUser(data* data, int id) {
     for (int i=0;i<20;i++) {
-        if (data->arrayId[i] == id) {
-            data->arrayId[i] = -1;
+        if (data->arrayId[i] == (int*)(size_t)id) {
+            data->arrayId[i] = (int*)(size_t)-1;
             strcpy(data->arrayName[i],"empty");
             return;
         }
@@ -260,7 +259,7 @@ int isCommand(char* msg) {
 char** getCommand(char* msg) {
     char * save = (char*)malloc(sizeof(char)*strlen(msg));
     strcpy(save,msg);
-    char *datas[3];
+    static char *datas[3];
     for (int i=0;i<3;i++) { datas[i]=(char *)malloc(sizeof(char) * 200); } // Initialize the returned array
 
     char d[] = " ";
@@ -301,18 +300,18 @@ void executeCommand(char* content, data* data, int id) {
     strtok(toCompare,"\0");
     strtok(toCompare,"\n");
 
-    if (strcmp(toCompare,"/help") == 0) { char cont[1000] = ""; personalMessage(helpMessage(&cont), data->arrayName[id], data,id); } // Help command 
-    else if (strcmp(toCompare,"/files") == 0) { char cont[500] = ""; personalMessage(listFile(&cont), data->arrayName[id], data,id); } // Files list of the server 
+    if (strcmp(toCompare,"/help") == 0) { char cont[1000] = ""; personalMessage(helpMessage((char*)&cont), data->arrayName[id], data,id); } // Help command 
+    else if (strcmp(toCompare,"/files") == 0) { char cont[500] = ""; personalMessage(listFile((char*)&cont), data->arrayName[id], data,id); } // Files list of the server 
     else if (strcmp(toCompare,"/msg") == 0) { privateMessage(command[2], command[1], data,id); } // Private message 
-    else if (strcmp(toCompare,"/list") == 0) { char cont[500] = ""; personalMessage(listClient(&cont,data), data->arrayName[id], data,id); } // List online clients 
-    else if (strcmp(toCompare,"/listC") == 0) { char cont[500] = ""; personalMessage(listClientChannel(&cont,data,id), data->arrayName[id], data,id); } // List online clients in the current channel
-    else if (strcmp(toCompare,"/connect") == 0) { connectChannel(command[1], id, data); } // Connect to a channel
-    else if (strcmp(toCompare, "/create") == 0) { createChannel(command[1],data); } // Create a channel 
-    else if (strcmp(toCompare, "/delete") == 0) { deleteChannel(command[1],data); } // Delete a channel
+    else if (strcmp(toCompare,"/list") == 0) { char cont[500] = ""; personalMessage(listClient((char*)&cont,data), data->arrayName[id], data,id); } // List online clients 
+    else if (strcmp(toCompare,"/listC") == 0) { char cont[500] = ""; personalMessage(listClientChannel((char*)&cont,data,id), data->arrayName[id], data,id); } // List online clients in the current channel
+    else if (strcmp(toCompare,"/connect") == 0) { pthread_mutex_lock(&data->mutex); connectChannel(command[1],id,data); pthread_mutex_unlock(&data->mutex); } // Connect to a channel
+    else if (strcmp(toCompare, "/create") == 0) { pthread_mutex_lock(&data->mutex); createChannel(command[1],data,id); pthread_mutex_unlock(&data->mutex); } // Create a channel 
+    else if (strcmp(toCompare, "/delete") == 0) { pthread_mutex_lock(&data->mutex); deleteChannel(command[1],data,id); pthread_mutex_unlock(&data->mutex); } // Delete a channel
     else if (strcmp(toCompare, "/all") == 0) { broadcast(data, command[1],command[2], id); } // Broadcast a message to all channels
     else if (strcmp(toCompare, "/report") == 0) { report(data->arrayName[id],command[1],command[2]); } // Report a situation to an admin
-    else if (strcmp(toCompare, "/chann") == 0) { char cont[500] = ""; personalMessage(listChannels(&cont,data), data->arrayName[id], data,id); } // List channels
-    else { printf("## Command not found ##\n"); char cont[500] = ""; personalMessage(helpMessage(&cont), data->arrayName[id], data,id); }
+    else if (strcmp(toCompare, "/chann") == 0) { char cont[500] = ""; personalMessage(listChannels((char*)&cont,data), data->arrayName[id], data,id); } // List channels
+    else { printf("## Command not found ##\n"); char cont[500] = ""; personalMessage(helpMessage((char*)&cont), data->arrayName[id], data,id); }
 
     free(toCompare);
 }
@@ -365,7 +364,7 @@ void kick(data* data, char* name) {
     int id = nameToId(name,data);
     if (id!=-1) { // User exists
         adminPrivateMessage("You have been kicked !", name, data);
-        shutdown(data->arrayId[id],2);
+        shutdown((int)(size_t)data->arrayId[id],2);
         deleteUser(data,id);
     }
 }
@@ -395,7 +394,7 @@ char* listFile(char* content) {
  */
 int nameToId(char* username, data* data) {
     for (int i=0;i<20;i++) {
-        if (strcmp(data->arrayName[i],username) == 0) { return data->arrayId[i]; }
+        if (strcmp(data->arrayName[i],username) == 0) { return (int)(size_t)data->arrayId[i]; }
     }
     return -1;
 }
@@ -409,7 +408,7 @@ int nameToId(char* username, data* data) {
  */
 char* idToName(int id, data* data) { 
     for (int i=0;i<20;i++) {
-        int var = data->arrayId[i];
+        int var = (int)(size_t)data->arrayId[i];
         if (var == id) { return data->arrayName[i]; }
     }
     return "";
@@ -425,7 +424,7 @@ char* idToName(int id, data* data) {
  */
 void privateMessage(char* msg, char* username, data* data, int index) { 
     char *sender = calloc(40, sizeof(char));
-    strcpy(sender,idToName(data->arrayId[index], data));
+    strcpy(sender,idToName((int)(size_t)data->arrayId[index], data));
     int size = strlen(msg) + 50;
     char* content = (char *)malloc(sizeof(char)*size);
 
@@ -744,7 +743,7 @@ void file() {
 void send_file(FILE *fp, int sockfd) { 
     int n;
     char data[SIZE] = {0};
-    while(fread(data, sizeof(char), SIZE, fp)!= NULL) { // There are some data
+    while(fread(data, sizeof(char), SIZE, fp)!= (unsigned long)NULL) { // There are some data
         if (send(sockfd, data, sizeof(data), 0) == -1) { perror("[-]Error in sending file."); exit(1);}
         bzero(data, SIZE);
     }
@@ -830,13 +829,18 @@ void downloadFile() {
  * @param channel The name of the channel
  * @param data Information used for server management
  */
-void createChannel(char* channel, data* data){
+void createChannel(char* channel, data* data, int index){
     int id = nextEmptyChannel(data);
     if (id != -1) { 
-        if (checkChannel(data, channel) == 0) { // Channel does not exist
+        if ((checkChannel(data, channel) == 0) && (strcmp(channel,"empty") != 0) && (testRegex("^[a-zA-Z0-9]{4}",channel,0) != 1)) { // Channel does not exist
             strcpy(datas.arrayChannelName[id],channel);
+            personalMessage("## Channel created ##", data->arrayName[index], data,index);
+            return;
         }
+        personalMessage("## Channel name invalid ##", data->arrayName[index], data,index);
+        return;
     }   
+    personalMessage("## Too many channels ##", data->arrayName[index], data,index);
 }
 
 /**
@@ -845,15 +849,16 @@ void createChannel(char* channel, data* data){
  * @param channel The name of the channel
  * @param data Information used for server management
  */
-void deleteChannel(char* channel, data* data){
+void deleteChannel(char* channel, data* data, int index){
     for (int i=0; i<20; i++) {
         if ((strcmp(data->arrayChannelName[i],channel) == 0) && (strcmp(channel,"public") != 0)) { 
-            for (int j=0; j<20; j++) {
-                if (data->arrayIdChannel[j]==i) { data->arrayIdChannel[j] = 0; }
-            }
+            data->arrayIdChannel[i] = 0;
             strcpy(data->arrayChannelName[i],"empty");
+            personalMessage("## Channel deleted ##", data->arrayName[index], data,index);
+            return;
         }
     }
+    personalMessage("## Channel name invalid ##", data->arrayName[index], data,index);
 }
 
 /**
@@ -880,8 +885,11 @@ int nameToIdChannel(char* channel, data* data) {
 void connectChannel(char* channel, int index, data* data){
     if (checkChannel(data, channel) == 1) {
         strtok(channel,"\n");
-        data->arrayIdChannel[index] = nameToIdChannel(channel,data);
+        data->arrayIdChannel[index] = (int*)(size_t)nameToIdChannel(channel,data);
+        personalMessage("## Connected to the new channel ##", data->arrayName[index], data,index);
+        return;
     }
+    personalMessage("## Channel invalid ##", data->arrayName[index], data,index);
 }
 
 /**

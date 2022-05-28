@@ -57,7 +57,7 @@ int isCommand(char* msg) { // Determines if the message contains a command
 char** getCommand(char* msg) {
     char * save = (char*)malloc(sizeof(char)*strlen(msg));
     strcpy(save,msg);
-    char *datas[2];
+    static char *datas[2];
     for (int i=0;i<2;i++) { datas[i]=(char *)malloc(sizeof(char) * 200); } // Initialize the returned array
 
     char d[] = " ";
