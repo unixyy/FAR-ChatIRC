@@ -125,3 +125,5 @@ void adminPrivateMessage(char* msg, char* username, data* data); // Sends a priv
 void adminBroadcast(data* datas, char* text1,char* text2); // Sending a message to all clients by an admin
 
 int testRegex(char* regex, char* content, int param); // See if a content contains a regex
+
+int indexClient(data* data, int id); // Calculate the index corresponding to a client id

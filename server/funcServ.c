@@ -42,7 +42,7 @@ void broadcast(data* datas, char* text1,char* text2, int index) {
     // Sending management
     for (int i=0;i<20;i++) {
         if ((datas->arrayId[index] != datas->arrayId[i]) && ((int)(size_t)datas->arrayId[i] != -1)) { // If the client is different from the one sending
-            personalMessage(content, datas->arrayName[index], datas, index);
+            personalMessage(content, datas->arrayName[i], datas, index);
         }
     }
 }
@@ -98,7 +98,7 @@ void messageChannel(data* datas, char* msg, int index) {
     // Sending management
     for (int i=0;i<20;i++) {
         if ((datas->arrayId[index] != datas->arrayId[i]) && ((int)(size_t)datas->arrayId[i] != -1) && ((int)(size_t)(datas->arrayIdChannel[i])==myChannel)) { // If the client is different from the one sending
-            personalMessage(content, datas->arrayName[index], datas, index);
+            personalMessage(content, datas->arrayName[i], datas, index);
         }
     }
 }
@@ -285,19 +285,26 @@ void report(char* id, char* text1, char* text2){
 void kick(data* data, char* name) {
     int id = nameToId(name,data);
     if (id!=-1) { // User exists
+        pthread_mutex_lock(&data->mutex);
+        data->isClose[indexClient(data,id)] = (int*)(size_t)1;
+        pthread_mutex_unlock(&data->mutex);
         adminPrivateMessage("You have been kicked !", name, data);
         printf("## Client kicked ##\n\n");
-        shutdown((int)(size_t)data->arrayId[id],2);
-        deleteUser(data,id);
-
-        // TO DO :
-        /*pthread_mutex_lock(&datas->mutex);
-        deleteUser(datas,id);
-        datas->threadToClose[index] = (void*)pthread_self();
-        datas->isClose[index] = (int*)(size_t)1;
-        datas->arrayIdChannel[index] = NULL;
-        pthread_mutex_unlock(&datas->mutex);*/
     }
+}
+
+/**
+ * @brief Calculate the index corresponding to a client id
+ * 
+ * @param data Information used for server management
+ * @param id The id of the client
+ * @return The index
+ */
+int indexClient(data* data, int id) {
+    for (int i=0;i<20;i++) {
+        if ((int)(size_t)data->arrayId[i] == id) { return i; }
+    }
+    return -1;
 }
 
 /**

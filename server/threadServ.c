@@ -28,7 +28,7 @@ void * receiveSend(data* datas) {
 
     personalMessage("Welcome! You can chat freely after entering your nickname (/help if needed).", datas->arrayName[index], datas,index);  // Send a welcome message to the client
    
-    while (!stop) {
+    while (!stop && !datas->close && !datas->isClose[index]) {
         int size;
         int sizeRCV= recv((int)(size_t)datas->arrayId[index], &size, sizeof(int), 0); // Receives the size of the message that will follow
         if (sizeRCV== -1) { break; }
@@ -87,7 +87,9 @@ void * closeThread(data* datas) {
         for (int i=0;i<20;i++) {
             if (datas->isClose[i] != 0) { 
                 pthread_join(*datas->threadToClose[i], NULL); // Closed the requested thread
+                pthread_mutex_lock(&datas->mutex);
                 datas->isClose[i] = 0;
+                pthread_mutex_unlock(&datas->mutex);
                 rk_sema_post(datas->s);
             }
         }
@@ -245,7 +247,7 @@ void admin(data* data) {
         fgets(m, sizeof(char)*100, stdin);
         printf("\n");
         strtok(m,"\n");
-        
+
         if (strcmp(m,haveToStop)==0) { printf("\033[31;1;%dmAdmin disconnection...\n\033[0m",1); break; } // Quit the admin session
         else if (isCommand(m)) { adminCommand(m, data); } // Special command
         else { printf("## Command not found ##\n\n"); }
