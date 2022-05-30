@@ -233,7 +233,7 @@ void executeCommand(char* content, data* data, int id) {
     else if (strcmp(toCompare, "/all") == 0) { broadcast(data, command[1],command[2], id); } // Broadcast a message to all channels
     else if (strcmp(toCompare, "/report") == 0) { report(data->arrayName[id],command[1],command[2]); } // Report a situation to an admin
     else if (strcmp(toCompare, "/chann") == 0) { char cont[500] = ""; personalMessage(listChannels((char*)&cont,data), data->arrayName[id], data,id); } // List channels
-    else { printf("## Command not found ##\n"); char cont[500] = ""; personalMessage(helpMessage((char*)&cont), data->arrayName[id], data,id); }
+    else { char cont[500] = ""; personalMessage(helpMessage((char*)&cont), data->arrayName[id], data,id); }
 
     free(toCompare);
 }
@@ -253,7 +253,7 @@ void adminCommand(char* content, data* data) {
     if (strcmp(toCompare,"/msg") == 0) { adminPrivateMessage(command[2], command[1], data); } // Private message 
     else if (strcmp(toCompare, "/all") == 0) { adminBroadcast(data, command[1],command[2]); } // Message to all channels
     else if (strcmp(toCompare, "/kick") == 0) { kick(data, command[1]); } // Kick a client
-    else { printf("## Command not found ##\n"); }
+    else { printf("\033[32;1;1m## Command not found ##\033[0m\n\n"); }
     
     free(toCompare);
 }
@@ -289,8 +289,9 @@ void kick(data* data, char* name) {
         data->isClose[indexClient(data,id)] = (int*)(size_t)1;
         pthread_mutex_unlock(&data->mutex);
         adminPrivateMessage("You have been kicked !", name, data);
-        printf("## Client kicked ##\n\n");
+        printf("\033[32;1;1m## Client kicked ##\033[0m\n\n");
     }
+    else { printf("\033[32;1;1m## User not found ##\033[0m\n\n"); }
 }
 
 /**
@@ -377,6 +378,7 @@ void privateMessage(char* msg, char* username, data* data, int index) {
         if (send(id, &size, sizeof(int), 0) == -1) { perror("[-]Error send"); shutdown(id, 2); shutdown(datas.dS,2); exit(0); }
         if (send(id, content, size*sizeof(char),0) == -1) { perror("[-]Error send"); shutdown(id, 2); shutdown(datas.dS,2); exit(0); }
     } 
+    else { personalMessage("\033[32;1;1m## User not found ##\033[0m", data->arrayName[index], data,index); }
 
     free(sender);
     free(content);
@@ -402,6 +404,8 @@ void adminPrivateMessage(char* msg, char* username, data* data) {
         if (send(id, &size, sizeof(int), 0) == -1) { perror("[-]Error send");shutdown(datas.dS,2); exit(0); }
         if (send(id, content, size*sizeof(char),0) == -1) { perror("[-]Error send");shutdown(datas.dS,2); exit(0); }
     }
+    else { printf("\033[32;1;1m## User not found ##\033[0m\n\n"); }
+    
 
     free(content);
 }
@@ -648,13 +652,13 @@ void createChannel(char* channel, data* data, int index){
     if (id != -1) { 
         if ((checkChannel(data, channel) == 0) && (strcmp(channel,"empty") != 0) && (testRegex("^[a-zA-Z0-9]{4}",channel,0) != 1)) { // Channel does not exist
             strcpy(datas.arrayChannelName[id],channel);
-            personalMessage("## Channel created ##", data->arrayName[index], data,index);
+            personalMessage("\033[32;1;1m## Channel created ##\033[0m", data->arrayName[index], data,index);
             return;
         }
-        personalMessage("## Channel name invalid ##", data->arrayName[index], data,index);
+        personalMessage("\033[32;1;1m## Channel name invalid ##\033[0m", data->arrayName[index], data,index);
         return;
     }   
-    personalMessage("## Too many channels ##", data->arrayName[index], data,index);
+    personalMessage("\033[32;1;1m## Too many channels ##\033[0m", data->arrayName[index], data,index);
 }
 
 /**
@@ -668,11 +672,11 @@ void deleteChannel(char* channel, data* data, int index){
         if ((strcmp(data->arrayChannelName[i],channel) == 0) && (strcmp(channel,"public") != 0)) { 
             data->arrayIdChannel[i] = 0;
             strcpy(data->arrayChannelName[i],"empty");
-            personalMessage("## Channel deleted ##", data->arrayName[index], data,index);
+            personalMessage("\033[32;1;1m## Channel deleted ##\033[0m", data->arrayName[index], data,index);
             return;
         }
     }
-    personalMessage("## Channel name invalid ##", data->arrayName[index], data,index);
+    personalMessage("\033[32;1;1m## Channel name invalid ##\033[0m", data->arrayName[index], data,index);
 }
 
 /**
@@ -700,10 +704,10 @@ void connectChannel(char* channel, int index, data* data){
     if (checkChannel(data, channel) == 1) {
         strtok(channel,"\n");
         data->arrayIdChannel[index] = (int*)(size_t)nameToIdChannel(channel,data);
-        personalMessage("## Connected to the new channel ##", data->arrayName[index], data,index);
+        personalMessage("\033[32;1;1m## Connected to the new channel ##\033[0m", data->arrayName[index], data,index);
         return;
     }
-    personalMessage("## Channel invalid ##", data->arrayName[index], data,index);
+    personalMessage("\033[32;1;1m## Channel invalid ##\033[0m", data->arrayName[index], data,index);
 }
 
 /**

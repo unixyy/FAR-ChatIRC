@@ -129,8 +129,8 @@ void write_file(int sockfd, char* filename) {
 
   n = recv(sockfd, buffer, SIZE, 0);
   
-  if (strlen(buffer)==0) { printf("## This file does not exist ##\n");}
-  else { fp = fopen(filename, "w"); fputs(buffer,fp); bzero(buffer, SIZE); printf("## File received ##\n\n");}
+  if (strlen(buffer)==0) { printf("\033[32;1;1m## This file does not exist ##\033[0m\n\n");}
+  else { fp = fopen(filename, "w"); fputs(buffer,fp); bzero(buffer, SIZE); printf("\033[32;1;1m## File received ##\033[0m\n\n");}
   
   fclose(fp);
   return;

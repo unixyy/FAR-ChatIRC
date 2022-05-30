@@ -18,7 +18,6 @@
  * @param datas Information to communicate with the server
  */
 void * Receive(data* datas) {
-  int start = 1;
   while (!datas->stop) {
     int size;
     int sizeRCV = recv(datas->dS, &size, sizeof(int), 0); // Receives the size of the message that will follow
@@ -30,8 +29,7 @@ void * Receive(data* datas) {
     if (msgRCV == -1 ) { perror("[-]Error recv"); shutdown(datas->dS, 2); exit(0); }
     else if (msgRCV == 0) { break; }
 
-    if (start) { printf("\033[37;1;7m%s\n\033[0m",msg); start = 0; } // To display the welcome message differently
-    else { printf("%s\n\n", msg); printf("\n");}
+    printf("%s\n\n", msg);
     free(msg);
   }
   pthread_exit(0);
@@ -78,11 +76,11 @@ void file(sfile* sfiles) {
     if (fp == NULL) { perror("[-]Error in reading file"); exit(1);}
  
     send_file(fp, sockfd); // Send the file
-    printf("## File sent ##\n\n");
+    printf("\033[32;1;1m## File sent ##\033[0m\n\n");
  
     close(sockfd);
   } 
-  else { printf("## This file does not exist ##\n"); }
+  else { printf("\033[32;1;1m## This file does not exist ##\033[0m\n\n"); }
 
   pthread_exit(0);
 }

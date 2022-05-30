@@ -26,7 +26,7 @@ void * receiveSend(data* datas) {
     int stop = 0;
     int firstmsg = 1;
 
-    personalMessage("Welcome! You can chat freely after entering your nickname (/help if needed).", datas->arrayName[index], datas,index);  // Send a welcome message to the client
+    personalMessage("\033[37;1;7mWelcome! You can chat freely after entering your nickname (/help if needed).\033[0m", datas->arrayName[index], datas,index);  // Send a welcome message to the client
    
     while (!stop && !datas->close && !datas->isClose[index]) {
         int size;
@@ -41,7 +41,7 @@ void * receiveSend(data* datas) {
 
         if(firstmsg == 1) { // First message sent (pseudo of the client)
             if (checkPseudo(datas,msg) == 1) { // Nickname invalid
-                personalMessage("## Nickname invalid, please choose another one ##", datas->arrayName[index], datas,index); // Send a new nickname request
+                personalMessage("\033[32;1;1m## Nickname invalid, please choose another one ##\033[0m", datas->arrayName[index], datas,index); // Send a new nickname request
             } 
             else {
                 pthread_mutex_lock(&datas->mutex);
@@ -49,7 +49,7 @@ void * receiveSend(data* datas) {
                 strcpy(datas->arrayName[index],msg);
                 pthread_mutex_unlock(&datas->mutex);
 
-                personalMessage("## Nickname registered ##", datas->arrayName[index], datas,index); // Confirm that the nickname is correct
+                personalMessage("\033[32;1;1m## Nickname registered ##\033[0m", datas->arrayName[index], datas,index); // Confirm that the nickname is correct
                 firstmsg=0;
             }
         }
@@ -93,6 +93,9 @@ void * closeThread(data* datas) {
                 rk_sema_post(datas->s);
             }
         }
+    }
+    for (int k=0;k<20;k++) {
+        personalMessage("\033[32;1;1m## Server is closing ##\033[0m", datas->arrayName[k], datas,k); // Send a message to all the clients
     }
     for (int j=0;j<24;j++) {
         if ((j!=20) && (datas->threadToClose[j]!=NULL)) {
@@ -250,7 +253,7 @@ void admin(data* data) {
 
         if (strcmp(m,haveToStop)==0) { printf("\033[31;1;%dmAdmin disconnection...\n\033[0m",1); break; } // Quit the admin session
         else if (isCommand(m)) { adminCommand(m, data); } // Special command
-        else { printf("## Command not found ##\n\n"); }
+        else { printf("\033[32;1;1m## Command not found ##\n\n\033[0m"); }
     }
     data->threadToClose[21] = (void*)pthread_self();
     pthread_exit(0);
